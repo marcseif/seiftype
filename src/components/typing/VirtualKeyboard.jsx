@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import usePreferencesStore from '../../stores/preferencesStore';
+import CatPaws from './CatPaws';
 
 const KEYBOARD_LAYOUT = [
   ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '=', 'backspace'],
@@ -50,7 +52,10 @@ const FINGER_COLORS = {
   'thumb': 'rgba(255, 255, 255, 0.2)',  // White
 };
 
-export default function VirtualKeyboard({ nextChar }) {
+export default function VirtualKeyboard({ nextChar, scale = 1, forceShowKeys = false }) {
+  const showCatPaws = usePreferencesStore((s) => s.showCatPaws);
+  const showVirtualKeyboard = usePreferencesStore((s) => s.showVirtualKeyboard);
+  const showKeys = forceShowKeys || showVirtualKeyboard;
   const [activeKeys, setActiveKeys] = useState(new Set());
 
   useEffect(() => {
@@ -115,11 +120,13 @@ export default function VirtualKeyboard({ nextChar }) {
   }, [nextChar, targetBaseKey, targetShift]);
 
   return (
-    <div className="flex flex-col items-center gap-2 mt-8 opacity-70">
-      <div className="h-6 flex items-center justify-center font-mono text-sm font-bold uppercase transition-all" style={{ color: 'var(--color-primary)' }}>
-        {fingerText || <span className="opacity-0">.</span>}
-      </div>
-      {KEYBOARD_LAYOUT.map((row, rIdx) => (
+    <div 
+      className="flex flex-col items-center gap-2 mt-8 opacity-70"
+      style={{ transform: `scale(${scale})`, transformOrigin: 'top center' }}
+    >
+      {showKeys && (
+        <div className="mt-2 flex flex-col gap-2">
+          {KEYBOARD_LAYOUT.map((row, rIdx) => (
         <div key={rIdx} className="flex gap-2">
           {row.map((key) => {
             const isNext = targetBaseKey === key || targetShift === key;
@@ -172,6 +179,15 @@ export default function VirtualKeyboard({ nextChar }) {
           })}
         </div>
       ))}
+        </div>
+      )}
+      {showCatPaws ? (
+        <CatPaws activeFingerId={targetBaseKey ? FINGER_MAP[targetBaseKey] : null} />
+      ) : (
+        <div className="h-6 mt-4 flex items-center justify-center font-mono text-sm font-bold uppercase transition-all" style={{ color: 'var(--color-primary)' }}>
+          {fingerText || <span className="opacity-0">.</span>}
+        </div>
+      )}
     </div>
   );
 }

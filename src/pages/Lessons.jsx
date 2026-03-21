@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiChevronLeft, FiStar } from 'react-icons/fi';
+import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
+import { FiChevronLeft, FiStar, FiLock } from 'react-icons/fi';
 import { LESSON_CATEGORIES } from '../data/lessons';
 import useTypingEngine from '../hooks/useTypingEngine';
 import TypingDisplay from '../components/typing/TypingDisplay';
@@ -15,10 +15,19 @@ import { toastXP } from '../components/ui/Toast';
 
 export default function Lessons() {
   const [activeLesson, setActiveLesson] = useState(null);
+  const completedLessons = usePreferencesStore(s => s.completedLessons) || []; 
 
   if (activeLesson) {
     return <LessonRunner lesson={activeLesson} onExit={() => setActiveLesson(null)} />;
   }
+
+  // Create a flattened array of lessons to calculate locking easily
+  const flatLessons = [];
+  LESSON_CATEGORIES.forEach(cat => {
+    cat.lessons.forEach(l => {
+      flatLessons.push(l.id);
+    });
+  });
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
@@ -34,25 +43,35 @@ export default function Lessons() {
             <p className="text-sm mb-6" style={{ color: 'var(--color-text-secondary)' }}>{category.description}</p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {category.lessons.map((lesson) => (
-                <button
-                  key={lesson.id}
-                  onClick={() => setActiveLesson(lesson)}
-                  className="flex flex-col text-left p-4 rounded-lg border transition-all hover:-translate-y-1"
-                  style={{
-                    background: 'var(--color-bg)',
-                    borderColor: 'var(--color-border)',
-                  }}
-                >
-                  <span className="font-bold text-sm mb-1" style={{ color: 'var(--color-text)' }}>{lesson.title}</span>
-                  <span className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Target: {lesson.targetWpm} WPM</span>
-                  <div className="flex gap-1 mt-auto">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <FiStar key={star} className="w-3 h-3" style={{ color: 'var(--color-border)', fill: 'transparent' }} />
-                    ))}
-                  </div>
-                </button>
-              ))}
+              {category.lessons.map((lesson) => {
+                const lessonIndex = flatLessons.indexOf(lesson.id);
+                // Locked if it's not the first lesson and the PREVIOUS lesson is not completed
+                const isLocked = lessonIndex > 0 && !completedLessons.includes(flatLessons[lessonIndex - 1]);
+                const isCompleted = completedLessons.includes(lesson.id);
+
+                return (
+                  <button
+                    key={lesson.id}
+                    onClick={() => !isLocked && setActiveLesson(lesson)}
+                    className={`flex flex-col text-left p-4 rounded-lg border transition-all ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-1'}`}
+                    style={{
+                      background: 'var(--color-bg)',
+                      borderColor: isCompleted ? 'var(--color-success)' : 'var(--color-border)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{lesson.title}</span>
+                      {isLocked && <FiLock className="text-xs" style={{ color: 'var(--color-text-muted)' }} />}
+                    </div>
+                    <span className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Target: {lesson.targetWpm} WPM</span>
+                    <div className="flex gap-1 mt-auto">
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <FiStar key={star} className="w-3 h-3" style={{ color: 'var(--color-border)', fill: 'transparent' }} />
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -63,13 +82,19 @@ export default function Lessons() {
 
 function LessonRunner({ lesson, onExit }) {
   const { user, profile, addXP, updateUserProfile } = useUserStore();
-  const { caretStyle, smoothCaret, font, fontSize } = usePreferencesStore();
+  const prefs = usePreferencesStore();
+  const { caretStyle, smoothCaret, font, fontSize, markLessonCompleted } = prefs;
+
+  const isPresent = useIsPresent();
 
   const [finished, setFinished] = useState(false);
   const [resultData, setResultData] = useState(null);
   const containerRef = useRef(null);
 
   const handleComplete = useCallback(async (results) => {
+    if (results.wpm >= lesson.targetWpm) {
+      markLessonCompleted(lesson.id);
+    }
     setFinished(true);
     setResultData(results);
 
@@ -107,6 +132,39 @@ function LessonRunner({ lesson, onExit }) {
     lesson.content.split(' ').length,
     handleComplete
   );
+
+  useEffect(() => {
+    if (!isPresent) {
+      engine.pause();
+    }
+  }, [isPresent, engine]);
+
+  const engineReset = engine.reset;
+  const engineIsActive = engine.isActive;
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const mode = prefs.restartKey || 'tab';
+      if (e.key === 'Tab') {
+        const isFocused = document.activeElement === containerRef.current;
+        if ((mode === 'tab' || mode === 'tab_enter') && (isFocused || engineIsActive)) e.preventDefault();
+        if (mode === 'tab') {
+          setFinished(false);
+          setResultData(null);
+          engineReset();
+          setTimeout(() => containerRef.current?.focus(), 10);
+        }
+      }
+      if (e.key === 'Escape' || (e.key === 'Escape' && mode === 'esc')) {
+        e.preventDefault();
+        setFinished(false);
+        setResultData(null);
+        engineReset();
+        setTimeout(() => containerRef.current?.focus(), 10);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [prefs.restartKey, engineReset, engineIsActive]);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -159,7 +217,13 @@ function LessonRunner({ lesson, onExit }) {
             <div
               ref={containerRef}
               tabIndex={0}
-              onKeyDown={engine.handleKeyDown}
+              onKeyDown={(e) => {
+                const mode = prefs.restartKey || 'tab';
+                if (e.key === 'Tab' && (mode === 'tab' || mode === 'tab_enter')) {
+                  e.preventDefault();
+                }
+                engine.handleKeyDown(e);
+              }}
               className="outline-none rounded-xl border p-6 cursor-text focus:ring-2"
               style={{
                 background: 'var(--color-surface)',
@@ -174,7 +238,7 @@ function LessonRunner({ lesson, onExit }) {
                 font={font}
                 fontSize={fontSize}
               />
-              <VirtualKeyboard nextChar={engine.nextExpectedChar} />
+              <VirtualKeyboard nextChar={engine.nextExpectedChar} forceShowKeys={true} />
             </div>
           </motion.div>
         ) : (

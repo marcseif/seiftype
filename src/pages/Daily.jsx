@@ -14,7 +14,7 @@ import ResultsCard from '../components/typing/ResultsCard';
 import DailyLeaderboard from '../components/daily/DailyLeaderboard';
 import StreakDisplay from '../components/daily/StreakDisplay';
 import { SkeletonCard } from '../components/ui/LoadingSkeleton';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 
 
 export default function Daily() {
@@ -22,6 +22,8 @@ export default function Daily() {
   const { caretStyle, smoothCaret, font, fontSize } = usePreferencesStore();
 
   const today = new Date().toISOString().split('T')[0];
+
+  const isPresent = useIsPresent();
 
   const [passage, setPassage] = useState('');
   const [leaderboard, setLeaderboard] = useState([]);
@@ -112,6 +114,12 @@ export default function Daily() {
   }, [user, profile, today, loadLeaderboard, addXP, updateUserProfile, myResult]);
 
   const engine = useTypingEngine(passage, 'words', 50, handleComplete);
+
+  useEffect(() => {
+    if (!isPresent) {
+      engine.pause();
+    }
+  }, [isPresent, engine]);
 
   useEffect(() => {
     if (passage && !engine.isFinished) {

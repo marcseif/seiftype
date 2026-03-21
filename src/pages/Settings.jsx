@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import usePreferencesStore from '../stores/preferencesStore';
 import useUserStore from '../stores/userStore';
-import { updatePreferences, uploadAvatarFile } from '../lib/supabase';
+import { updatePreferences, uploadAvatarFile, linkOAuthIdentity, unlinkOAuthIdentity } from '../lib/supabase';
+import { FcGoogle } from 'react-icons/fc';
+import { FaDiscord } from 'react-icons/fa';
 import { THEMES, FONTS, CARET_STYLES, SOUND_PACKS, applyTheme } from '../data/themes';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -110,6 +112,34 @@ export default function Settings() {
     setAvatarUrl(URL.createObjectURL(file));
   };
 
+  const handleLinkProvider = async (provider) => {
+    try {
+      const { error } = await linkOAuthIdentity(provider);
+      if (error) throw error;
+      // It will redirect to the provider here
+    } catch (error) {
+      toast.error(error.message || `Failed to link ${provider}`);
+    }
+  };
+
+  const handleUnlinkProvider = async (provider) => {
+    try {
+      const identity = user?.identities?.find(i => i.provider === provider);
+      if (!identity) throw new Error('Identity not found');
+      
+      const { error } = await unlinkOAuthIdentity(identity.identity_id);
+      if (error) throw error;
+      toast.success(`${provider} account unlinked successfully! Reloading...`);
+      setTimeout(() => window.location.reload(), 1500); // Reload to fetch updated identities
+    } catch (error) {
+      toast.error(error.message || `Failed to unlink ${provider}`);
+    }
+  };
+
+  const providers = user?.app_metadata?.providers || [];
+  const linkedGoogle = providers.includes('google');
+  const linkedDiscord = providers.includes('discord');
+
   return (
     <div className="max-w-3xl mx-auto space-y-8">
       <h1 className="text-2xl font-black" style={{ color: 'var(--color-text)' }}>Settings</h1>
@@ -167,6 +197,66 @@ export default function Settings() {
               >
                 Update Profile
               </button>
+            </div>
+          </div>
+        </Section>
+      )}
+
+      {/* Connections (Linked Accounts) */}
+      {user && (
+        <Section title="Connections">
+          <div className="flex flex-col gap-4">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Link your social accounts to log in flexibly.
+            </p>
+            <div className="flex items-center justify-between p-3 rounded-lg border" style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-center gap-3">
+                <FcGoogle size={24} />
+                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Google</span>
+              </div>
+              {linkedGoogle ? (
+                <button
+                  onClick={() => handleUnlinkProvider('google')}
+                  className="px-4 py-1.5 rounded text-sm font-medium transition-opacity"
+                  style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)' }}
+                  title="Unlink Google"
+                >
+                  Unlink
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleLinkProvider('google')}
+                  className="px-4 py-1.5 rounded text-sm font-medium transition-opacity"
+                  style={{ background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+                >
+                  Link Account
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between p-3 rounded-lg border" style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)' }}>
+              <div className="flex items-center gap-3">
+                <FaDiscord size={24} style={{ color: '#5865F2' }} />
+                <span className="font-semibold" style={{ color: 'var(--color-text)' }}>Discord</span>
+              </div>
+              {linkedDiscord ? (
+                <button
+                  onClick={() => handleUnlinkProvider('discord')}
+                  className="px-4 py-1.5 rounded text-sm font-medium transition-opacity"
+                  style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)' }}
+                  title="Unlink Discord"
+                >
+                  Unlink
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleLinkProvider('discord')}
+                  className="px-4 py-1.5 rounded text-sm font-medium transition-opacity"
+                  style={{ background: 'var(--color-surface)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+                >
+                  Link Account
+                </button>
+              )}
             </div>
           </div>
         </Section>
@@ -393,8 +483,7 @@ export default function Settings() {
         <div className="space-y-3">
           <Toggle label="Show live WPM" checked={prefs.showLiveWPM} onChange={prefs.setShowLiveWPM} />
           <Toggle label="Show live accuracy" checked={prefs.showLiveAccuracy} onChange={prefs.setShowLiveAccuracy} />
-          <Toggle label="Show virtual keyboard layout" checked={prefs.showVirtualKeyboard} onChange={prefs.setShowVirtualKeyboard} />
-          <Toggle label="Freedom mode (no error correction)" checked={prefs.freedomMode} onChange={prefs.setFreedomMode} />
+          <Toggle label="Show virtual keyboard layout" checked={prefs.showVirtualKeyboard} onChange={prefs.setShowVirtualKeyboard} />            <Toggle label="Show cat paws indicator" checked={prefs.showCatPaws} onChange={prefs.setShowCatPaws} />          <Toggle label="Freedom mode (no error correction)" checked={prefs.freedomMode} onChange={prefs.setFreedomMode} />
         </div>
       </Section>
 

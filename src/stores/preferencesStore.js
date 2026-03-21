@@ -15,9 +15,11 @@ const usePreferencesStore = create(
       smoothCaret: true,
       showLiveWPM: true,
       showLiveAccuracy: true,
-      showVirtualKeyboard: false,
+      showVirtualKeyboard: true,
+      showCatPaws: true,
       freedomMode: false,
-      restartKey: 'tab_enter', // 'tab_enter', 'tab', 'esc'
+      completedLessons: [],
+      restartKey: 'tab', // 'tab_enter', 'tab', 'esc'
 
       // Test config
       testMode: 'time',
@@ -64,7 +66,9 @@ const usePreferencesStore = create(
       setShowLiveWPM: (showLiveWPM) => set({ showLiveWPM }),
       setShowLiveAccuracy: (showLiveAccuracy) => set({ showLiveAccuracy }),
       setShowVirtualKeyboard: (showVirtualKeyboard) => set({ showVirtualKeyboard }),
+      setShowCatPaws: (showCatPaws) => set({ showCatPaws }),
       setFreedomMode: (freedomMode) => set({ freedomMode }),
+      markLessonCompleted: (lessonId) => set((s) => ({ completedLessons: s.completedLessons.includes(lessonId) ? s.completedLessons : [...s.completedLessons, lessonId] })),
       setRestartKey: (restartKey) => set({ restartKey }),
 
       setTestMode: (testMode) => set({ testMode }),
@@ -92,8 +96,7 @@ const usePreferencesStore = create(
         if (prefs.smooth_caret !== undefined) updates.smoothCaret = prefs.smooth_caret;
         if (prefs.show_live_wpm !== undefined) updates.showLiveWPM = prefs.show_live_wpm;
         if (prefs.show_live_accuracy !== undefined) updates.showLiveAccuracy = prefs.show_live_accuracy;
-        if (prefs.show_virtual_keyboard !== undefined) updates.showVirtualKeyboard = prefs.show_virtual_keyboard;
-        if (prefs.freedom_mode !== undefined) updates.freedomMode = prefs.freedom_mode;
+        if (prefs.show_virtual_keyboard !== undefined) updates.showVirtualKeyboard = prefs.show_virtual_keyboard;          if (prefs.show_cat_paws !== undefined) updates.showCatPaws = prefs.show_cat_paws;        if (prefs.freedom_mode !== undefined) updates.freedomMode = prefs.freedom_mode;
         if (prefs.restart_key !== undefined) updates.restartKey = prefs.restart_key;
         set(updates);
         applyTheme(updates.theme || get().theme || 'neon', updates.customTheme || get().customTheme);
@@ -112,8 +115,6 @@ const usePreferencesStore = create(
           smooth_caret: state.smoothCaret,
           show_live_wpm: state.showLiveWPM,
           show_live_accuracy: state.showLiveAccuracy,
-          freedom_mode: state.freedomMode,
-          
         };
       },
     }),
@@ -130,8 +131,8 @@ const usePreferencesStore = create(
         smoothCaret: state.smoothCaret,
         showLiveWPM: state.showLiveWPM,
         showLiveAccuracy: state.showLiveAccuracy,
-        showVirtualKeyboard: state.showVirtualKeyboard,
-        freedomMode: state.freedomMode,
+        showVirtualKeyboard: state.showVirtualKeyboard,          showCatPaws: state.showCatPaws,        freedomMode: state.freedomMode,
+        completedLessons: state.completedLessons,
         restartKey: state.restartKey,
         testMode: state.testMode,
         testModeValue: state.testModeValue,

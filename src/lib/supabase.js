@@ -56,6 +56,33 @@ export async function signInWithGoogle() {
   return { data, error };
 }
 
+export async function signInWithDiscord() {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'discord',
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+    },
+  });
+  return { data, error };
+}
+
+export async function resetPasswordForEmail(email) {
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}/settings?reset=true`,
+  });
+  return { data, error };
+}
+
+export async function linkOAuthIdentity(provider) {
+  const { data, error } = await supabase.auth.linkIdentity({ provider });
+  return { data, error };
+}
+
+export async function unlinkOAuthIdentity(identityId) {
+  const { data, error } = await supabase.auth.unlinkIdentity({ identity_id: identityId });
+  return { data, error };
+}
+
 export async function signOut() {
   const { error } = await supabase.auth.signOut();
   return { error };
@@ -359,19 +386,19 @@ export async function sendFriendRequest(userId, friendId) {
     .from('friendships')
     .select('*')
     .or('and(user_id.eq.' + userId + ',friend_id.eq.' + friendId + '),and(user_id.eq.' + friendId + ',friend_id.eq.' + userId + ')')
-    .single();
+      .maybeSingle();
 
-  if (existing) {
-    if (existing.status === 'accepted') return { error: { message: 'Already friends' } };
-    if (existing.status === 'pending') {
-      if (existing.friend_id === userId) {
-        return acceptFriendRequest(existing.id);
+    if (existing) {
+      if (existing.status === 'accepted') return { error: { message: 'Already friends' } };
+      if (existing.status === 'pending') {
+        if (existing.friend_id === userId) {
+          return acceptFriendRequest(existing.id);
+        }
+        return { error: { message: 'Request already sent' } };
       }
-      return { error: { message: 'Request already sent' } };
     }
-  }
 
-  const { data, error } = await supabase
+    const { data, error } = await supabase
     .from('friendships')
     .insert({ user_id: userId, friend_id: friendId, status: 'pending' })
     .select()
@@ -404,13 +431,13 @@ export async function getFriendshipStatus(userId, otherUserId) {
     .from('friendships')
     .select('*')
     .or('and(user_id.eq.' + userId + ',friend_id.eq.' + otherUserId + '),and(user_id.eq.' + otherUserId + ',friend_id.eq.' + userId + ')')
-    .single();
-  
-  if (error && error.code !== 'PGRST116') return { error };
-  
-  if (!data) return { data: { status: 'none' } };
+    .maybeSingle();
 
-  return { 
+  if (error && error.code !== 'PGRST116') return { error };
+
+  if (!data) return { data: null };
+
+  return {
     data: {
       id: data.id,
       status: data.status,

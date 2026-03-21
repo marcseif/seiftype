@@ -26,18 +26,10 @@ export default function Caret({ position, style = 'line', smooth = true, charWid
   }, [position.left, position.top]);
 
   const height = position.height || '1.2em';
-  const transition = smooth ? 'left 80ms ease-out, top 80ms ease-out' : 'none';
+  const transition = smooth ? 'transform 100ms cubic-bezier(0.2, 0, 0, 1)' : 'none';
 
-  // Base styles shared by all caret variants
-  const baseStyle = {
-    position: 'absolute',
-    left: position.left,
-    top: position.top,
-    height,
-    transition,
-    pointerEvents: 'none',
-    zIndex: 10,
-  };
+  let targetX = position.left ?? 0;
+  let targetY = position.top ?? 0;
 
   // Build variant-specific styles and animation class
   let variantStyle = {};
@@ -58,12 +50,11 @@ export default function Caret({ position, style = 'line', smooth = true, charWid
       variantStyle = {
         width: charWidth,
         height: '2px',
-        top: position.top + (parseFloat(height) || 0),
         backgroundColor: 'var(--color-caret)',
         borderRadius: '1px',
       };
       // Recalculate top to sit at the bottom of the character
-      variantStyle.top = (position.top ?? 0) + (position.height ?? 24) - 2;
+      targetY = targetY + (position.height ?? 24) - 2;
       animationClass = idle ? 'caret-underline' : '';
       break;
 
@@ -86,6 +77,19 @@ export default function Caret({ position, style = 'line', smooth = true, charWid
       animationClass = idle ? 'caret-line' : '';
       break;
   }
+
+  // Base styles shared by all caret variants
+  const baseStyle = {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    transform: `translate(${targetX}px, ${targetY}px)`,
+    height,
+    transition,
+    willChange: 'transform',
+    pointerEvents: 'none',
+    zIndex: 10,
+  };
 
   // When the typist is active (not idle) we suppress the blink/pulse
   // CSS animations defined in index.css and just show a solid caret.

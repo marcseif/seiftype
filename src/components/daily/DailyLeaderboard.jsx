@@ -1,6 +1,6 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
-
+import { Link } from 'react-router-dom';
 
 export default function DailyLeaderboard({ results = [], currentUserId }) {
   if (results.length === 0) {
@@ -52,7 +52,7 @@ export default function DailyLeaderboard({ results = [], currentUserId }) {
             </span>
 
             {/* Player */}
-            <div className="flex items-center gap-2 min-w-0">
+            <Link to={user.username ? `/u/${user.username}` : '#'} className="flex items-center gap-2 min-w-0 hover:opacity-80 transition-opacity">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="w-6 h-6 rounded-full flex-shrink-0" />
               ) : (
@@ -74,7 +74,7 @@ export default function DailyLeaderboard({ results = [], currentUserId }) {
                   Lv.{user.level}
                 </span>
               )}
-            </div>
+            </Link>
 
             {/* WPM */}
             <span className="text-sm font-bold text-right" style={{ color: 'var(--color-primary)' }}>

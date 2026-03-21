@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion, useIsPresent } from 'framer-motion';
 import useUserStore from '../stores/userStore';
 import useRaceStore from '../stores/raceStore';
 import usePreferencesStore from '../stores/preferencesStore';
@@ -15,13 +15,14 @@ import LiveStats from '../components/typing/LiveStats';
 import useTypingEngine from '../hooks/useTypingEngine';
 import { toastElo, toastXP } from '../components/ui/Toast';
 import { calculateXP } from '../lib/metrics';
-import { motion} from 'framer-motion';
 
 export default function Race() {
   const navigate = useNavigate();
   const { user, profile, refreshProfile, addXP } = useUserStore();
   const race = useRaceStore();
   const { caretStyle, smoothCaret, font, fontSize } = usePreferencesStore();
+
+  const isPresent = useIsPresent();
 
   const [roomInput, setRoomInput] = useState('');
   const [error, setError] = useState('');
@@ -36,6 +37,12 @@ export default function Race() {
     race.passage ? race.passage.split(' ').length : 50,
     handleRaceComplete
   );
+
+  useEffect(() => {
+    if (!isPresent) {
+      engine.pause();
+    }
+  }, [isPresent, engine]);
 
   // Update local progress to supabase during race
   useEffect(() => {
@@ -376,7 +383,12 @@ export default function Race() {
         <div
           ref={containerRef}
           tabIndex={0}
-          onKeyDown={engine.handleKeyDown}
+          onKeyDown={(e) => {
+            if (e.key === 'Tab') {
+              e.preventDefault(); // Stop tab-jumping entirely while racing
+            }
+            engine.handleKeyDown(e);
+          }}
           className="outline-none rounded-xl border p-6 cursor-text"
           style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
           autoFocus

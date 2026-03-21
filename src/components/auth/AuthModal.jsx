@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { FiX, FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
-import { signUpWithEmail, signInWithEmail, signInWithGoogle } from '../../lib/supabase';
+import { FaDiscord } from 'react-icons/fa';
+import { signUpWithEmail, signInWithEmail, signInWithGoogle, signInWithDiscord, resetPasswordForEmail } from '../../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
@@ -11,17 +12,20 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   const resetForm = () => {
     setEmail('');
     setPassword('');
     setUsername('');
     setError('');
+    setSuccess('');
   };
 
   const switchMode = (newMode) => {
     setMode(newMode);
-    resetForm();
+    setError('');
+    setSuccess('');
   };
 
   const validate = () => {
@@ -37,6 +41,9 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (mode === 'reset') {
+      return handleResetPassword(e);
+    }
     const validationError = validate();
     if (validationError) {
       setError(validationError);
@@ -45,20 +52,22 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
 
     setLoading(true);
     setError('');
+    setSuccess('');
 
     try {
       if (mode === 'signup') {
         const { error } = await signUpWithEmail(email, password, username);
         if (error) throw error;
+        setSuccess('Account created! Please check your email to verify your account.');
       } else {
         const { error } = await signInWithEmail(email, password);
         if (error) throw error;
+        onClose();
       }
-      onClose();
     } catch (err) {
       setError(err.message || 'An error occurred');
     } finally {
-      setLoading(false);
+      if (mode !== 'signup') setLoading(false);
     }
   };
 
@@ -68,6 +77,31 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
       if (error) throw error;
     } catch (err) {
       setError(err.message || 'Google sign in failed');
+    }
+  };
+
+  const handleDiscord = async () => {
+    try {
+      const { error } = await signInWithDiscord();
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || 'Discord sign in failed');
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+    setLoading(true);
+    try {
+      const { error } = await resetPasswordForEmail(email);
+      if (error) throw error;
+      setSuccess('Password reset link sent to your email. You can close this window.');
+    } catch (err) {
+      setError(err.message || 'Failed to send reset link');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -104,7 +138,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
-                {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+                {mode === 'reset' ? 'Reset Password' : mode === 'signin' ? 'Welcome Back' : 'Create Account'}
               </h2>
               <button onClick={onClose} className="p-1 rounded hover:opacity-70" style={{ color: 'var(--color-text-secondary)' }}>
                 <FiX size={20} />
@@ -112,6 +146,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
             </div>
 
             {/* Mode Toggle */}
+            {mode !== 'reset' && (
             <div className="flex rounded-lg mb-6 p-1" style={{ background: 'var(--color-bg)' }}>
               {['signin', 'signup'].map((m) => (
                 <button
@@ -127,11 +162,19 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
                 </button>
               ))}
             </div>
+            )}
 
             {/* Error */}
             {error && (
               <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'var(--color-error-bg)', color: 'var(--color-error)' }}>
                 {error}
+              </div>
+            )}
+            
+            {/* Success */}
+            {success && (
+              <div className="mb-4 p-3 rounded-lg text-sm" style={{ background: 'oklch(0.9 0.05 140 / 0.2)', color: 'var(--color-success)' }}>
+                {success}
               </div>
             )}
 
@@ -173,6 +216,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
                 />
               </div>
 
+              {mode !== 'reset' && (
               <div className="relative">
                 <FiLock className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--color-text-muted)' }} size={16} />
                 <input
@@ -188,6 +232,7 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
                   }}
                 />
               </div>
+              )}
 
               <button
                 type="submit"
@@ -195,26 +240,63 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
                 className="w-full py-2.5 rounded-lg text-sm font-semibold transition-opacity disabled:opacity-50"
                 style={{ background: 'var(--color-primary)', color: '#fff' }}
               >
-                {loading ? 'Loading...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
+                {loading ? 'Loading...' : mode === 'reset' ? 'Send Reset Link' : mode === 'signin' ? 'Sign In' : 'Create Account'}
               </button>
+
+              {mode === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('reset')}
+                  className="text-xs text-center mt-2 hover:underline"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  Forgot Password?
+                </button>
+              )}
+              {mode === 'reset' && (
+                <button
+                  type="button"
+                  onClick={() => switchMode('signin')}
+                  className="text-xs text-center mt-2 hover:underline"
+                  style={{ color: 'var(--color-primary)' }}
+                >
+                  Back to Sign In
+                </button>
+              )}
             </form>
 
             {/* Divider */}
-            <div className="flex items-center gap-3 my-4">
-              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-              <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>or</span>
-              <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
-            </div>
+            {mode !== 'reset' && (
+              <>
+                <div className="flex items-center gap-3 my-4">
+                  <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
+                  <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>or</span>
+                  <div className="flex-1 h-px" style={{ background: 'var(--color-border)' }} />
+                </div>
 
-            {/* Google */}
-            <button
-              onClick={handleGoogle}
-              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-opacity hover:opacity-80"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
-            >
-              <FcGoogle size={18} />
-              Continue with Google
-            </button>
+                <div className="flex flex-col gap-2">
+                  {/* Google */}
+                  <button
+                    onClick={handleGoogle}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-opacity hover:opacity-80"
+                    style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                  >
+                    <FcGoogle size={18} />
+                    Continue with Google
+                  </button>
+                  
+                  {/* Discord */}
+                  <button
+                    onClick={handleDiscord}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border text-sm font-medium transition-opacity hover:opacity-80"
+                    style={{ borderColor: 'var(--color-border)', color: '#fff', backgroundColor: '#5865F2' }}
+                  >
+                    <FaDiscord size={18} />
+                    Continue with Discord
+                  </button>
+                </div>
+              </>
+            )}
           </motion.div>
         </motion.div>
       )}

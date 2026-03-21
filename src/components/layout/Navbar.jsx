@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FiMenu, FiX, FiUser, FiUsers, FiSettings, FiLogOut } from 'react-icons/fi';
 import useUserStore from '../../stores/userStore';
-import { signOut } from '../../lib/supabase';
+import { signOut, getPendingFriendRequests, supabase } from '../../lib/supabase';
 import { getRankTier } from '../../lib/elo';
 import { calculateLevel, xpForLevel } from '../../lib/metrics';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +20,32 @@ export default function Navbar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [pendingCount, setPendingCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchRequests = () => {
+      getPendingFriendRequests(user.id).then(({ data }) => {
+        if (data) setPendingCount(data.length);
+      });
+    };
+
+    fetchRequests();
+
+    const channel = supabase
+      .channel('friendships_changes_nav')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'friendships', filter: `friend_id=eq.${user.id}` },
+        fetchRequests
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
 
   const handleSignOut = async () => {
     await signOut();
@@ -143,6 +169,11 @@ export default function Navbar() {
                         onClick={() => setDropdownOpen(false)}
                       >
                         <FiUsers size={14} /> Friends
+                        {pendingCount > 0 && (
+                          <span className="ml-auto flex items-center justify-center min-w-[16px] h-4 rounded-full text-[10px] font-bold" style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                            {pendingCount}
+                          </span>
+                        )}
                       </Link>
                       <Link
                         to="/settings"
@@ -224,8 +255,13 @@ export default function Navbar() {
                   <Link to={`/u/${profile?.username}`} onClick={() => setMobileOpen(false)} className="px-3 py-2 rounded-md text-sm" style={{ color: 'var(--color-text)' }}>
                     Profile
                   </Link>
-                  <Link to="/friends" onClick={() => setMobileOpen(false)} className="px-3 py-2 rounded-md text-sm" style={{ color: 'var(--color-text)' }}>
+                  <Link to="/friends" onClick={() => setMobileOpen(false)} className="px-3 py-2 rounded-md text-sm flex items-center justify-between" style={{ color: 'var(--color-text)' }}>
                     Friends
+                    {pendingCount > 0 && (
+                      <span className="flex items-center justify-center min-w-[16px] h-4 rounded-full text-[10px] font-bold px-1" style={{ background: 'var(--color-primary)', color: 'var(--color-bg)' }}>
+                        {pendingCount}
+                      </span>
+                    )}
                   </Link>
                   <Link to="/settings" onClick={() => setMobileOpen(false)} className="px-3 py-2 rounded-md text-sm" style={{ color: 'var(--color-text)' }}>
                     Settings

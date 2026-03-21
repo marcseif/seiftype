@@ -461,6 +461,15 @@ export default function useTypingEngine(words, mode, modeValue, onComplete) {
     init();
   }, [init, stopRAF]);
 
+  const pause = useCallback(() => {
+    stopRAF();
+    isActiveRef.current = false;
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  }, [stopRAF]);
+
   // ---------------------------------------------------------------------------
   // Public API
   // ---------------------------------------------------------------------------
@@ -469,5 +478,6 @@ export default function useTypingEngine(words, mode, modeValue, onComplete) {
     handleKeyDown,
     reset,
     restart,
+    pause,
   };
 }

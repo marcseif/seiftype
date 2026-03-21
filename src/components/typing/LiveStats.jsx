@@ -42,15 +42,16 @@ export default function LiveStats({
   };
 
   return (
-    <AnimatePresence>
-      {isActive && (
-        <motion.div
-          className="flex items-center justify-center gap-8 py-2"
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -8 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-        >
+    <div className="h-12 w-full flex items-center justify-center">
+      <AnimatePresence>
+        {isActive && (
+          <motion.div
+            className="flex items-center justify-center gap-8 py-2 w-full"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          >
           {/* WPM */}
           {showLiveWPM && (
             <div className="flex items-baseline gap-1.5">
@@ -117,6 +118,7 @@ export default function LiveStats({
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+      </AnimatePresence>
+    </div>
   );
 }

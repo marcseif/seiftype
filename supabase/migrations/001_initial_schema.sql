@@ -142,7 +142,7 @@ CREATE INDEX idx_achievements_user ON public.achievements(user_id);
 -- ============================================================
 CREATE TABLE public.user_preferences (
   user_id UUID PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-  theme TEXT DEFAULT 'dark',
+  theme TEXT DEFAULT 'neon',
   custom_theme JSONB,
   font TEXT DEFAULT 'JetBrains Mono',
   font_size INT DEFAULT 18,
@@ -192,8 +192,8 @@ CREATE POLICY "Users can insert their own record" ON public.users
 -- Test Results
 ALTER TABLE public.test_results ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view their own test results" ON public.test_results
-  FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Anyone can view test results" ON public.test_results
+  FOR SELECT USING (true);
 
 CREATE POLICY "Users can insert their own test results" ON public.test_results
   FOR INSERT WITH CHECK (auth.uid() = user_id);
@@ -384,38 +384,61 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.matchmaking_queue;
  
  A L T E R   T A B L E   p u b l i c . f r i e n d s h i p s   E N A B L E   R O W   L E V E L   S E C U R I T Y ; 
  
- C R E A T E   P O L I C Y   \  
- U s e r s  
- c a n  
- v i e w  
- t h e i r  
- o w n  
+ C R E A T E   P O L I C Y   \ 
+ 
+ U s e r s 
+ 
+ c a n 
+ 
+ v i e w 
+ 
+ t h e i r 
+ 
+ o w n 
+ 
  f r i e n d s h i p s \   O N   p u b l i c . f r i e n d s h i p s 
      F O R   S E L E C T   U S I N G   ( a u t h . u i d ( )   =   u s e r _ i d   O R   a u t h . u i d ( )   =   f r i e n d _ i d ) ; 
  
- C R E A T E   P O L I C Y   \ U s e r s  
- c a n  
- i n s e r t  
+ C R E A T E   P O L I C Y   \ U s e r s 
+ 
+ c a n 
+ 
+ i n s e r t 
+ 
  f r i e n d s h i p s \   O N   p u b l i c . f r i e n d s h i p s 
      F O R   I N S E R T   W I T H   C H E C K   ( a u t h . u i d ( )   =   u s e r _ i d ) ; 
  
- C R E A T E   P O L I C Y   \ U s e r s  
- c a n  
- u p d a t e  
- f r i e n d s h i p s  
- w h e r e  
- t h e y  
- a r e  
- t h e  
+ C R E A T E   P O L I C Y   \ U s e r s 
+ 
+ c a n 
+ 
+ u p d a t e 
+ 
+ f r i e n d s h i p s 
+ 
+ w h e r e 
+ 
+ t h e y 
+ 
+ a r e 
+ 
+ t h e 
+ 
  f r i e n d \   O N   p u b l i c . f r i e n d s h i p s 
      F O R   U P D A T E   U S I N G   ( a u t h . u i d ( )   =   f r i e n d _ i d ) ; 
  
- C R E A T E   P O L I C Y   \ U s e r s  
- c a n  
- d e l e t e  
- t h e i r  
- o w n  
+ C R E A T E   P O L I C Y   \ U s e r s 
+ 
+ c a n 
+ 
+ d e l e t e 
+ 
+ t h e i r 
+ 
+ o w n 
+ 
  f r i e n d s h i p s \   O N   p u b l i c . f r i e n d s h i p s 
      F O R   D E L E T E   U S I N G   ( a u t h . u i d ( )   =   u s e r _ i d   O R   a u t h . u i d ( )   =   f r i e n d _ i d ) ; 
-  
+ 
+ 
  

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useIsPresent } from 'framer-motion';
 
 // Hooks
 import useTypingEngine from '../hooks/useTypingEngine';
@@ -40,20 +40,11 @@ const DEFAULT_CUSTOM_TEXT =
 // ---------------------------------------------------------------------------
 
 const configVariants = {
-  hidden: { opacity: 0, y: -12, height: 0, marginBottom: 0 },
+  hidden: { opacity: 0, pointerEvents: 'none' },
   visible: {
     opacity: 1,
-    y: 0,
-    height: 'auto',
-    marginBottom: 24,
+    pointerEvents: 'auto',
     transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
-  },
-  exit: {
-    opacity: 0,
-    y: -12,
-    height: 0,
-    marginBottom: 0,
-    transition: { duration: 0.2, ease: 'easeIn' },
   },
 };
 
@@ -102,6 +93,7 @@ export default function Home() {
   const caretStyle = usePreferencesStore((s) => s.caretStyle);
   const smoothCaret = usePreferencesStore((s) => s.smoothCaret);
   const showVirtualKeyboard = usePreferencesStore((s) => s.showVirtualKeyboard);
+  const showCatPaws = usePreferencesStore((s) => s.showCatPaws);
 
   // ---- User store ----
   const user = useUserStore((s) => s.user);
@@ -126,6 +118,9 @@ export default function Home() {
 
   // ---- Achievements hook ----
   const { checkAndUnlock } = useAchievements();
+
+  // ---- Framer Motion Presence ----
+  const isPresent = useIsPresent();
 
   // ---------------------------------------------------------------------------
   // Test completion handler
@@ -222,6 +217,12 @@ export default function Home() {
     handleTestComplete
   );
 
+  useEffect(() => {
+    if (!isPresent) {
+      engine.pause();
+    }
+  }, [isPresent, engine]);
+
   // ---------------------------------------------------------------------------
   // Passage generation
   //
@@ -293,6 +294,7 @@ export default function Home() {
   // ---------------------------------------------------------------------------
   // Restart / Next test
   // ---------------------------------------------------------------------------
+  const engineRestart = engine.restart;
   const handleRestart = useCallback(() => {
     setCompletedResult(null);
 
@@ -301,7 +303,7 @@ export default function Home() {
     // For custom mode the text stays the same -- just restart the engine.
     // For all other modes, bump the regen counter to produce a new passage.
     if (state.contentMode === 'custom') {
-      engine.restart();
+      engineRestart();
     } else {
       setRegenCounter((c) => c + 1);
     }
@@ -310,7 +312,7 @@ export default function Home() {
     setTimeout(() => {
       containerRef.current?.focus();
     }, 80);
-  }, [engine]);
+  }, [engineRestart]);
 
   const handleNextTest = useCallback(() => {
     setCompletedResult(null);
@@ -329,13 +331,13 @@ export default function Home() {
       const restartKeyMode = prefs.restartKey || 'tab_enter';
 
       if (e.key === 'Tab') {
-        // Prevent Tab from moving browser focus during a test
-        if (engine.isActive || engine.isFinished) {
+        // Only prevent Tab if the user is focused on the typing container or actively typing
+        const isContainerFocused = document.activeElement === containerRef.current;
+        if ((restartKeyMode === 'tab' || restartKeyMode === 'tab_enter') && (isContainerFocused || engine.isActive)) {
           e.preventDefault();
         }
         tabPressedRef.current = true;
         if (restartKeyMode === 'tab') {
-          e.preventDefault();
           handleRestart();
         }
       }
@@ -357,12 +359,18 @@ export default function Home() {
       }
     };
 
+    const handleWindowBlur = () => {
+      tabPressedRef.current = false;
+    };
+
     window.addEventListener('keydown', handleGlobalKeyDown);
     window.addEventListener('keyup', handleGlobalKeyUp);
+    window.addEventListener('blur', handleWindowBlur);
 
     return () => {
       window.removeEventListener('keydown', handleGlobalKeyDown);
       window.removeEventListener('keyup', handleGlobalKeyUp);
+      window.removeEventListener('blur', handleWindowBlur);
     };
   }, [engine.isActive, engine.isFinished, handleRestart]);
 
@@ -442,22 +450,18 @@ export default function Home() {
   return (
     <div className="flex flex-col items-center w-full max-w-3xl mx-auto px-4 py-8">
       {/* ------------------------------------------------------------------ */}
-      {/* Test configuration (hidden during active test / results)           */}
+      {/* Test configuration (faded during active test / hidden on results)  */}
       {/* ------------------------------------------------------------------ */}
-      <AnimatePresence>
-        {showConfig && (
-          <motion.div
-            key="config"
-            variants={configVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="w-full overflow-hidden"
-          >
-            <TestConfig />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {!showResults && (
+        <motion.div
+          variants={configVariants}
+          initial="visible"
+          animate={showConfig ? 'visible' : 'hidden'}
+          className="w-full mb-6"
+        >
+          <TestConfig />
+        </motion.div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Live stats (WPM / accuracy / timer)                                */}
@@ -554,7 +558,7 @@ export default function Home() {
                 <AnimatePresence>
                   {!isFocused && !engine.isActive && (
                     <motion.div
-                      className="absolute inset-0 z-10 flex items-center justify-center rounded-xl"
+                      className="absolute inset-0 z-10 flex items-center justify-center rounded-xl pointer-events-none"
                       style={{
                         backgroundColor: 'var(--color-surface)',
                         opacity: 0.85,
@@ -586,8 +590,8 @@ export default function Home() {
                 />
                 
                 {/* Virtual Keyboard */}
-                {showVirtualKeyboard && (
-                  <VirtualKeyboard nextChar={engine.nextExpectedChar} />
+                {(showVirtualKeyboard || showCatPaws) && (
+                  <VirtualKeyboard nextChar={engine.nextExpectedChar} scale={0.8} />
                 )}
               </div>
             )}

@@ -1,12 +1,18 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import useUserStore from '../stores/userStore';
+import { FiUserPlus, FiUserCheck, FiClock, FiUserMinus } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 
 // Supabase data fetchers
 import {
   getProfileByUsername,
   getTestResults,
   getUserAchievements,
+  getFriendshipStatus,
+  sendFriendRequest,
+  removeFriend
 } from '../lib/supabase';
 
 // Stats utilities
@@ -148,19 +154,22 @@ function ChartCard({ title, children }) {
 
 export default function Profile() {
   const { username } = useParams();
+  const { user: currentUser } = useUserStore();
 
   // ---- Data state ----
   const [profile, setProfile] = useState(null);
   const [results, setResults] = useState([]);
   const [achievements, setAchievements] = useState([]);
+  const [friendship, setFriendship] = useState(null);
 
   // ---- UI state ----
   const [loading, setLoading] = useState(true);
+  const [friendActionLoading, setFriendActionLoading] = useState(false);
   const [notFound, setNotFound] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
   // ---------------------------------------------------------------------------
-  // Fetch profile, results, and achievements on mount / username change
+  // Fetch profile, results, and achievements on mount / username change        
   // ---------------------------------------------------------------------------
   useEffect(() => {
     let cancelled = false;
@@ -183,15 +192,19 @@ export default function Profile() {
 
       if (!cancelled) setProfile(profileData);
 
-      // 2. Fetch test results and achievements in parallel
-      const [resultsRes, achievementsRes] = await Promise.all([
+      // 2. Fetch test results, achievements, and friendship status
+      const [resultsRes, achievementsRes, friendRes] = await Promise.all([
         getTestResults(profileData.id, 500),
         getUserAchievements(profileData.id),
+        currentUser && currentUser.id !== profileData.id 
+          ? getFriendshipStatus(currentUser.id, profileData.id) 
+          : Promise.resolve({ data: null })
       ]);
 
       if (!cancelled) {
         setResults(resultsRes.data || []);
         setAchievements(achievementsRes.data || []);
+        setFriendship(friendRes?.data || null);
         setLoading(false);
       }
     }
@@ -201,9 +214,37 @@ export default function Profile() {
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [username, currentUser]);
 
-  // ---------------------------------------------------------------------------
+  const handleFriendAction = async () => {
+    if (!currentUser) return toast.error('Must be logged in');
+    if (!profile) return;
+    
+    setFriendActionLoading(true);
+    try {
+      if (!friendship || friendship.status === 'none') {
+        const { data, error } = await sendFriendRequest(currentUser.id, profile.id);
+        if (error) throw error;
+        toast.success('Friend request sent!');
+        setFriendship({ id: data?.id, status: 'pending', isInitiator: true });
+      } else if (friendship.status === 'accepted') {
+        const { error } = await removeFriend(friendship.id);
+        if (error) throw error;
+        toast.success('Friend removed');
+        setFriendship(null);
+      } else if (friendship.status === 'pending' && friendship.isInitiator) {
+        // Cancel request
+        const { error } = await removeFriend(friendship.id);
+        if (error) throw error;
+        toast.success('Friend request cancelled');
+        setFriendship(null);
+      }
+    } catch (err) {
+      toast.error(err.message || 'Action failed');
+    } finally {
+      setFriendActionLoading(false);
+    }
+  };
   // Derived / computed data  (memoised to avoid recalculating on every render)
   // ---------------------------------------------------------------------------
   const stats = useMemo(() => aggregateStats(results), [results]);
@@ -288,9 +329,47 @@ export default function Profile() {
       animate="visible"
     >
       {/* ------------------------------------------------------------------ */}
-      {/* Profile Card                                                       */}
+      {/* Profile Card & Actions                                             */}
       {/* ------------------------------------------------------------------ */}
-      <ProfileCard profile={profile} stats={stats} />
+      <div className="relative">
+        <ProfileCard profile={profile} stats={stats} />
+        
+        {currentUser && currentUser.id !== profile.id && (
+          <div className="absolute top-6 right-6 flex gap-2">
+            <button
+              onClick={handleFriendAction}
+              disabled={friendActionLoading}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm"
+              style={{
+                background: friendship?.status === 'accepted' ? 'var(--color-surface)' : 'var(--color-primary)',
+                color: friendship?.status === 'accepted' ? 'var(--color-error)' : '#fff',
+                border: friendship?.status === 'accepted' ? '1px solid var(--color-error)' : 'none',
+                opacity: friendActionLoading ? 0.6 : 1
+              }}
+            >
+              {friendship?.status === 'accepted' ? (
+                <>
+                  <FiUserMinus size={16} /> Remove Friend
+                </>
+              ) : friendship?.status === 'pending' ? (
+                friendship.isInitiator ? (
+                  <>
+                    <FiClock size={16} /> Request Pending
+                  </>
+                ) : (
+                  <>
+                    <FiUserCheck size={16} /> Has Requested You
+                  </>
+                )
+              ) : (
+                <>
+                  <FiUserPlus size={16} /> Add Friend
+                </>
+              )}
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* ------------------------------------------------------------------ */}
       {/* Tab Navigation                                                     */}

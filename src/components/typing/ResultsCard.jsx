@@ -207,7 +207,9 @@ export default function ResultsCard({
       const mode = prefs.restartKey || 'tab_enter';
 
       if (e.key === 'Tab') {
-        e.preventDefault();
+        if (mode === 'tab' || mode === 'tab_enter') {
+          e.preventDefault();
+        }
         tabPressed.current = true;
         if (mode === 'tab') {
           onRestart?.();
