@@ -159,6 +159,7 @@ function getHowl(packName, soundType) {
 // ---------------------------------------------------------------------------
 export default function useSound() {
   const soundPack = usePreferencesStore((s) => s.soundPack);
+  const soundVolume = usePreferencesStore((s) => s.soundVolume);
   const packRef = useRef(soundPack);
 
   useEffect(() => {
@@ -175,8 +176,11 @@ export default function useSound() {
 
   const play = useCallback((soundType) => {
     const howl = getHowl(packRef.current, soundType);
-    if (howl) howl.play();
-  }, []);
+    if (howl) {
+      howl.volume(soundVolume);
+      howl.play();
+    }
+  }, [soundVolume]);
 
   const playKeystroke = useCallback(() => play('keystroke'), [play]);
   const playError = useCallback(() => play('error'), [play]);

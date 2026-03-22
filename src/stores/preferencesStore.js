@@ -12,6 +12,7 @@ const usePreferencesStore = create(
       fontSize: 18,
       caretStyle: 'line',
       soundPack: 'silent',
+      soundVolume: 1.0,
       smoothCaret: true,
       showLiveWPM: true,
       showLiveAccuracy: true,
@@ -19,6 +20,7 @@ const usePreferencesStore = create(
       showCatPaws: true,
       freedomMode: false,
       completedLessons: [],
+      lessonResults: {}, // { 'basics_1': { stars: 3, wpm: 45 } }
       restartKey: 'tab', // 'tab_enter', 'tab', 'esc'
 
       // Test config
@@ -62,13 +64,27 @@ const usePreferencesStore = create(
       setFontSize: (fontSize) => set({ fontSize }),
       setCaretStyle: (caretStyle) => set({ caretStyle }),
       setSoundPack: (soundPack) => set({ soundPack }),
+      setSoundVolume: (soundVolume) => set({ soundVolume }),
       setSmoothCaret: (smoothCaret) => set({ smoothCaret }),
       setShowLiveWPM: (showLiveWPM) => set({ showLiveWPM }),
       setShowLiveAccuracy: (showLiveAccuracy) => set({ showLiveAccuracy }),
       setShowVirtualKeyboard: (showVirtualKeyboard) => set({ showVirtualKeyboard }),
       setShowCatPaws: (showCatPaws) => set({ showCatPaws }),
       setFreedomMode: (freedomMode) => set({ freedomMode }),
-      markLessonCompleted: (lessonId) => set((s) => ({ completedLessons: s.completedLessons.includes(lessonId) ? s.completedLessons : [...s.completedLessons, lessonId] })),
+      markLessonCompleted: (lessonId, stars = 0, wpm = 0) => set((s) => {
+        const nextResults = { ...s.lessonResults };
+        const prevRes = nextResults[lessonId];
+        
+        // Only update stats if the new WPM is higher than the previously saved WPM
+        if (!prevRes || wpm > prevRes.wpm) {
+          nextResults[lessonId] = { stars, wpm };
+        }
+        
+        return {
+          completedLessons: s.completedLessons.includes(lessonId) ? s.completedLessons : [...s.completedLessons, lessonId],
+          lessonResults: nextResults
+        };
+      }),
       setRestartKey: (restartKey) => set({ restartKey }),
 
       setTestMode: (testMode) => set({ testMode }),
@@ -92,6 +108,7 @@ const usePreferencesStore = create(
         if (prefs.font) updates.font = prefs.font;
         if (prefs.font_size) updates.fontSize = prefs.font_size;
         if (prefs.caret_style) updates.caretStyle = prefs.caret_style;
+        if (prefs.sound_volume !== undefined) updates.soundVolume = prefs.sound_volume;
         if (prefs.sound_pack) updates.soundPack = prefs.sound_pack;
         if (prefs.smooth_caret !== undefined) updates.smoothCaret = prefs.smooth_caret;
         if (prefs.show_live_wpm !== undefined) updates.showLiveWPM = prefs.show_live_wpm;
@@ -111,6 +128,7 @@ const usePreferencesStore = create(
           font: state.font,
           font_size: state.fontSize,
           caret_style: state.caretStyle,
+          sound_volume: state.soundVolume,
           sound_pack: state.soundPack,
           smooth_caret: state.smoothCaret,
           show_live_wpm: state.showLiveWPM,
@@ -126,6 +144,7 @@ const usePreferencesStore = create(
         savedCustomThemes: state.savedCustomThemes,
         font: state.font,
         fontSize: state.fontSize,
+        soundVolume: state.soundVolume,
         caretStyle: state.caretStyle,
         soundPack: state.soundPack,
         smoothCaret: state.smoothCaret,
@@ -133,6 +152,7 @@ const usePreferencesStore = create(
         showLiveAccuracy: state.showLiveAccuracy,
         showVirtualKeyboard: state.showVirtualKeyboard,          showCatPaws: state.showCatPaws,        freedomMode: state.freedomMode,
         completedLessons: state.completedLessons,
+        lessonResults: state.lessonResults,
         restartKey: state.restartKey,
         testMode: state.testMode,
         testModeValue: state.testModeValue,

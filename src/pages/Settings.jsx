@@ -32,7 +32,7 @@ export default function Settings() {
   }, [
     user,
     prefs.theme, prefs.customTheme, prefs.font, prefs.fontSize,
-    prefs.caretStyle, prefs.soundPack, prefs.smoothCaret, prefs.showLiveWPM,
+    prefs.caretStyle, prefs.soundPack, prefs.soundVolume, prefs.smoothCaret, prefs.showLiveWPM,
     prefs.showLiveAccuracy, prefs.showVirtualKeyboard, prefs.freedomMode,
     prefs.restartKey
   ]);
@@ -460,21 +460,41 @@ export default function Settings() {
 
       {/* Sound */}
       <Section title="Sound">
-        <div className="flex gap-2 flex-wrap">
-          {SOUND_PACKS.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => prefs.setSoundPack(s.value)}
-              className="px-4 py-2 rounded-lg border text-sm font-medium transition-all"
-              style={{
-                background: prefs.soundPack === s.value ? 'var(--color-highlight)' : 'var(--color-bg)',
-                borderColor: prefs.soundPack === s.value ? 'var(--color-primary)' : 'var(--color-border)',
-                color: prefs.soundPack === s.value ? 'var(--color-primary)' : 'var(--color-text-secondary)',
-              }}
-            >
-              {s.name}
-            </button>
-          ))}
+        <div className="flex flex-col gap-4">
+          <div className="flex gap-2 flex-wrap">
+            {SOUND_PACKS.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => prefs.setSoundPack(s.value)}
+                className="px-4 py-2 rounded-lg border text-sm font-medium transition-all"
+                style={{
+                  background: prefs.soundPack === s.value ? 'var(--color-highlight)' : 'var(--color-bg)',
+                  borderColor: prefs.soundPack === s.value ? 'var(--color-primary)' : 'var(--color-border)',
+                  color: prefs.soundPack === s.value ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                }}
+              >
+                {s.name}
+              </button>
+            ))}
+          </div>
+          {prefs.soundPack !== 'silent' && (
+            <div className="flex items-center gap-4 max-w-xs">
+              <label className="text-sm font-medium" style={{ color: 'var(--color-text-secondary)' }}>Volume</label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.01"
+                value={prefs.soundVolume ?? 1.0}
+                onChange={(e) => prefs.setSoundVolume(parseFloat(e.target.value))}
+                className="w-full flex-1"
+                style={{ accentColor: 'var(--color-primary)' }}
+              />
+              <span className="text-sm w-8 text-right" style={{ color: 'var(--color-text-secondary)' }}>
+                {Math.round((prefs.soundVolume ?? 1.0) * 100)}%
+              </span>
+            </div>
+          )}
         </div>
       </Section>
 

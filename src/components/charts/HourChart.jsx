@@ -12,7 +12,7 @@ export default function HourChart({ data = [] }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={256}>
+    <ResponsiveContainer width="100%" height={256} minWidth={1} minHeight={1}>
       <BarChart data={data} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.5} />
         <XAxis dataKey="label" tick={{ fill: '#6b7280', fontSize: 10 }} interval={2} axisLine={{ stroke: '#374151' }} tickLine={{ stroke: '#374151' }} />

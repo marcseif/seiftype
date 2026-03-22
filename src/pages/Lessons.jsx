@@ -16,6 +16,7 @@ import { toastXP } from '../components/ui/Toast';
 export default function Lessons() {
   const [activeLesson, setActiveLesson] = useState(null);
   const completedLessons = usePreferencesStore(s => s.completedLessons) || []; 
+  const lessonResults = usePreferencesStore(s => s.lessonResults) || {};
 
   if (activeLesson) {
     return <LessonRunner lesson={activeLesson} onExit={() => setActiveLesson(null)} />;
@@ -28,6 +29,8 @@ export default function Lessons() {
       flatLessons.push(l.id);
     });
   });
+
+  const nextLessonId = flatLessons.find(id => !completedLessons.includes(id)) || flatLessons[0];
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
@@ -45,31 +48,59 @@ export default function Lessons() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               {category.lessons.map((lesson) => {
                 const lessonIndex = flatLessons.indexOf(lesson.id);
-                // Locked if it's not the first lesson and the PREVIOUS lesson is not completed
-                const isLocked = lessonIndex > 0 && !completedLessons.includes(flatLessons[lessonIndex - 1]);
                 const isCompleted = completedLessons.includes(lesson.id);
+                const isNext = lesson.id === nextLessonId;
+                // Locked if it's not completed, AND it's not the currently active "next" lesson
+                const isLocked = !isCompleted && !isNext;
 
                 return (
-                  <button
-                    key={lesson.id}
-                    onClick={() => !isLocked && setActiveLesson(lesson)}
-                    className={`flex flex-col text-left p-4 rounded-lg border transition-all ${isLocked ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-1'}`}
-                    style={{
-                      background: 'var(--color-bg)',
-                      borderColor: isCompleted ? 'var(--color-success)' : 'var(--color-border)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{lesson.title}</span>
-                      {isLocked && <FiLock className="text-xs" style={{ color: 'var(--color-text-muted)' }} />}
-                    </div>
-                    <span className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Target: {lesson.targetWpm} WPM</span>
-                    <div className="flex gap-1 mt-auto">
-                      {[1, 2, 3, 4, 5].map(star => (
-                        <FiStar key={star} className="w-3 h-3" style={{ color: 'var(--color-border)', fill: 'transparent' }} />
-                      ))}
-                    </div>
-                  </button>
+                  <div key={lesson.id} className="relative group perspective-1000">
+                    <button
+                      onClick={() => !isLocked && setActiveLesson(lesson)}
+                      className={`w-full flex flex-col text-left p-4 rounded-lg border transition-all duration-300 relative overflow-hidden ${isLocked ? 'opacity-60 cursor-not-allowed group-hover:scale-[0.98]' : 'hover:-translate-y-1 hover:shadow-lg'}`}
+                      style={{
+                        background: 'var(--color-bg)',
+                        borderColor: isCompleted ? 'var(--color-success)' : isNext ? 'var(--color-primary)' : 'var(--color-border)',
+                        boxShadow: isNext ? '0 0 15px rgba(233, 69, 96, 0.4)' : 'none',
+                      }}
+                    >
+                      {/* Highlight the next lesson slightly with a label */}
+                      {isNext && (
+                        <div className="absolute top-0 right-0 px-2 py-1 text-[10px] font-bold uppercase rounded-bl-lg" style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                          Up Next
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-sm" style={{ color: 'var(--color-text)' }}>{lesson.title}</span>
+                        {isLocked && <FiLock className="text-xs" style={{ color: 'var(--color-text-muted)' }} />}
+                      </div>
+                      <span className="text-xs mb-3" style={{ color: 'var(--color-text-muted)' }}>Target: {lesson.targetWpm} WPM</span>
+                      <div className="flex gap-1 mt-auto z-10">
+                        {[1, 2, 3, 4, 5].map(star => {
+                          const earnedStars = lessonResults[lesson.id]?.stars || 0;
+                          const isEarned = star <= earnedStars;
+                          return (
+                            <FiStar 
+                              key={star} 
+                              className="w-3 h-3 transition-colors" 
+                              style={{ 
+                                color: isEarned ? '#eab308' : 'var(--color-border)', 
+                                fill: isEarned ? '#eab308' : 'transparent' 
+                              }} 
+                            />
+                          );
+                        })}
+                      </div>
+                    </button>
+
+                    {/* Tooltip that animates in on hover over locked lessons */}
+                    {isLocked && (
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-3 py-1 rounded bg-black text-white text-xs whitespace-nowrap opacity-0 scale-95 pointer-events-none transition-all duration-200 group-hover:opacity-100 group-hover:scale-100 z-20">
+                        Complete previous lessons first
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -92,8 +123,15 @@ function LessonRunner({ lesson, onExit }) {
   const containerRef = useRef(null);
 
   const handleComplete = useCallback(async (results) => {
+    let earnedStars = 0;
+    for (let i = 0; i < lesson.stars.length; i++) {
+      if (results.wpm >= lesson.stars[i]) {
+        earnedStars = i + 1;
+      }
+    }
+
     if (results.wpm >= lesson.targetWpm) {
-      markLessonCompleted(lesson.id);
+      markLessonCompleted(lesson.id, earnedStars, results.wpm);
     }
     setFinished(true);
     setResultData(results);

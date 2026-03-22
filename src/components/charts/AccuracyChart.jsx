@@ -12,7 +12,7 @@ export default function AccuracyChart({ data = [] }) {
   }
 
   return (
-    <ResponsiveContainer width="100%" height={256}>
+    <ResponsiveContainer width="100%" height={256} minWidth={1} minHeight={1}>
       <AreaChart data={filtered} margin={{ top: 5, right: 5, bottom: 5, left: -10 }}>
         <defs>
           <linearGradient id="accGrad" x1="0" y1="0" x2="0" y2="1">

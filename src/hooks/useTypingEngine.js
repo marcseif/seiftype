@@ -203,20 +203,32 @@ export default function useTypingEngine(words, mode, modeValue, onComplete) {
   }, [mode, modeValue, stopRAF]);
 
   const startRAF = useCallback(() => {
+    let lastRenderTime = performance.now();
     const tick = () => {
-      if (isActiveRef.current && startTimeRef.current) {
-        elapsedRef.current = (performance.now() - startTimeRef.current) / 1000;
+      if (!isActiveRef.current) return;
+
+      const now = performance.now();
+
+      if (startTimeRef.current) {
+        elapsedRef.current = (now - startTimeRef.current) / 1000;
 
         if (mode === 'time') {
           const remaining = Math.max(0, modeValue - elapsedRef.current);
           timeLeftRef.current = remaining;
           if (remaining <= 0) {
+            setDisplayState(buildDisplayState());
             finish();
             return;
           }
         }
       }
-      setDisplayState(buildDisplayState());
+
+      // Throttle pure-time state updates to ~15fps so we don't starve React Router transitions
+      if (now - lastRenderTime > 66) {
+        setDisplayState(buildDisplayState());
+        lastRenderTime = now;
+      }
+      
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
@@ -260,180 +272,190 @@ export default function useTypingEngine(words, mode, modeValue, onComplete) {
   // Core key handler
   // ---------------------------------------------------------------------------
   const handleKeyDown = useCallback((e) => {
-    // Ignore modifier-only and navigation keys
-    if (e.ctrlKey || e.altKey || e.metaKey) return;
-    if (['Shift', 'CapsLock', 'Tab', 'Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    const prevTotal = totalKeystrokesRef.current;
+    const prevIndex = charIndexRef.current;
 
-    if (isFinishedRef.current) return;
+    try {
+      // Ignore modifier-only and navigation keys
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      if (['Shift', 'CapsLock', 'Tab', 'Escape', 'Enter', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
 
-    // Auto-start on first meaningful keypress
-    if (!isActiveRef.current && e.key !== 'Backspace') {
-      startEngine();
-    }
+      if (isFinishedRef.current) return;
 
-    const now = performance.now();
-    const delay = lastKeyTimeRef.current ? now - lastKeyTimeRef.current : 0;
-    lastKeyTimeRef.current = now;
+      // Auto-start on first meaningful keypress
+      if (!isActiveRef.current && e.key !== 'Backspace') {
+        startEngine();
+      }
 
-    const currentWord = wordsArray.current[wordIndexRef.current] || '';
-    const chars = charStatesRef.current;
+      const now = performance.now();
+      const delay = lastKeyTimeRef.current ? now - lastKeyTimeRef.current : 0;
+      lastKeyTimeRef.current = now;
 
-    // -------------------------------------------------------------------------
-    // Backspace
-    // -------------------------------------------------------------------------
-    if (e.key === 'Backspace') {
-      e.preventDefault();
+      const currentWord = wordsArray.current[wordIndexRef.current] || '';
+      const chars = charStatesRef.current;
 
-      // If there are extra characters past the word, remove the last extra first
-      const wordExtras = extraCharsRef.current[wordIndexRef.current];
-      if (wordExtras && wordExtras.length > 0) {
-        wordExtras.pop();
-        inputRef.current = inputRef.current.slice(0, -1);
+      // -------------------------------------------------------------------------
+      // Backspace
+      // -------------------------------------------------------------------------
+      if (e.key === 'Backspace') {
+        e.preventDefault();
 
-        // Remove the extra charState entry that was appended
-        // Find the insertion point: wordStart + currentWord.length + remaining extras offset
-        const wordStart = getWordStartIndex(wordIndexRef.current);
-        const removeAt = wordStart + currentWord.length + wordExtras.length;
-        charStatesRef.current = [
-          ...chars.slice(0, removeAt),
-          ...chars.slice(removeAt + 1),
-        ];
-        charIndexRef.current = removeAt;
-        incorrectCharsRef.current = Math.max(0, incorrectCharsRef.current - 1);
+        // If there are extra characters past the word, remove the last extra first
+        const wordExtras = extraCharsRef.current[wordIndexRef.current];
+        if (wordExtras && wordExtras.length > 0) {
+          wordExtras.pop();
+          inputRef.current = inputRef.current.slice(0, -1);
+
+          // Remove the extra charState entry that was appended
+          // Find the insertion point: wordStart + currentWord.length + remaining extras offset
+          const wordStart = getWordStartIndex(wordIndexRef.current);
+          const removeAt = wordStart + currentWord.length + wordExtras.length;
+          charStatesRef.current = [
+            ...chars.slice(0, removeAt),
+            ...chars.slice(removeAt + 1),
+          ];
+          charIndexRef.current = removeAt;
+          incorrectCharsRef.current = Math.max(0, incorrectCharsRef.current - 1);
+          return;
+        }
+
+        // Normal backspace within the current word
+        if (inputRef.current.length > 0) {
+          inputRef.current = inputRef.current.slice(0, -1);
+
+          const posInWord = inputRef.current.length; // new length = position we are reverting
+          const wordStart = getWordStartIndex(wordIndexRef.current);
+          const ci = wordStart + posInWord;
+
+          if (ci < chars.length) {
+            // Revert the char state we're un-typing
+            const prev = chars[ci];
+            if (prev.state === 'correct') {
+              correctCharsRef.current = Math.max(0, correctCharsRef.current - 1);
+            } else if (prev.state === 'incorrect') {
+              incorrectCharsRef.current = Math.max(0, incorrectCharsRef.current - 1);
+            }
+            chars[ci] = { ...chars[ci], state: 'pending' };
+            charStatesRef.current = [...chars];
+            charIndexRef.current = ci;
+          }
+        }
         return;
       }
 
-      // Normal backspace within the current word
-      if (inputRef.current.length > 0) {
-        inputRef.current = inputRef.current.slice(0, -1);
+      // -------------------------------------------------------------------------
+      // Space  --  advance to next word
+      // -------------------------------------------------------------------------
+      if (e.key === ' ') {
+        e.preventDefault();
 
-        const posInWord = inputRef.current.length; // new length = position we are reverting
+        // Only advance if at least one character has been typed for this word
+        if (inputRef.current.length === 0) return;
+
+        // Mark any remaining un-typed chars in this word as incorrect (skipped)
+        const wordStart = getWordStartIndex(wordIndexRef.current);
+        for (let i = inputRef.current.length; i < currentWord.length; i++) {
+          const ci = wordStart + i;
+          if (ci < chars.length && chars[ci].state === 'pending') {
+            chars[ci] = { ...chars[ci], state: 'incorrect' };
+            incorrectCharsRef.current += 1;
+          }
+        }
+
+        // Mark the space separator as correct
+        const spaceIndex = wordStart + currentWord.length + (extraCharsRef.current[wordIndexRef.current]?.length || 0);
+        if (spaceIndex < chars.length && chars[spaceIndex].char === ' ') {
+          chars[spaceIndex] = { ...chars[spaceIndex], state: 'correct' };
+          correctCharsRef.current += 1;
+        }
+
+        totalKeystrokesRef.current += 1;
+        keystrokeLogRef.current.push({ key: ' ', timestamp: now, delay, correct: true });
+
+        charStatesRef.current = [...chars];
+        wordIndexRef.current += 1;
+        inputRef.current = '';
+        charIndexRef.current = getWordStartIndex(wordIndexRef.current);
+
+        // Check if all words completed (words mode)
+        if (mode === 'words' && wordIndexRef.current >= modeValue) {
+          finish();
+        }
+        // Also finish if we've run out of words in time mode
+        if (wordIndexRef.current >= wordsArray.current.length) {
+          finish();
+        }
+        return;
+      }
+
+      // -------------------------------------------------------------------------
+      // Regular character
+      // -------------------------------------------------------------------------
+      const posInWord = inputRef.current.length;
+
+      if (posInWord < currentWord.length) {
+        // Typing within the expected word
+        const expectedChar = currentWord[posInWord];
+        const isCorrect = e.key === expectedChar;
+
         const wordStart = getWordStartIndex(wordIndexRef.current);
         const ci = wordStart + posInWord;
 
         if (ci < chars.length) {
-          // Revert the char state we're un-typing
-          const prev = chars[ci];
-          if (prev.state === 'correct') {
-            correctCharsRef.current = Math.max(0, correctCharsRef.current - 1);
-          } else if (prev.state === 'incorrect') {
-            incorrectCharsRef.current = Math.max(0, incorrectCharsRef.current - 1);
-          }
-          chars[ci] = { ...chars[ci], state: 'pending' };
+          chars[ci] = { ...chars[ci], state: isCorrect ? 'correct' : 'incorrect' };
           charStatesRef.current = [...chars];
-          charIndexRef.current = ci;
         }
-      }
-      return;
-    }
 
-    // -------------------------------------------------------------------------
-    // Space  --  advance to next word
-    // -------------------------------------------------------------------------
-    if (e.key === ' ') {
-      e.preventDefault();
-
-      // Only advance if at least one character has been typed for this word
-      if (inputRef.current.length === 0) return;
-
-      // Mark any remaining un-typed chars in this word as incorrect (skipped)
-      const wordStart = getWordStartIndex(wordIndexRef.current);
-      for (let i = inputRef.current.length; i < currentWord.length; i++) {
-        const ci = wordStart + i;
-        if (ci < chars.length && chars[ci].state === 'pending') {
-          chars[ci] = { ...chars[ci], state: 'incorrect' };
+        if (isCorrect) {
+          correctCharsRef.current += 1;
+        } else {
           incorrectCharsRef.current += 1;
         }
-      }
 
-      // Mark the space separator as correct
-      const spaceIndex = wordStart + currentWord.length + (extraCharsRef.current[wordIndexRef.current]?.length || 0);
-      if (spaceIndex < chars.length && chars[spaceIndex].char === ' ') {
-        chars[spaceIndex] = { ...chars[spaceIndex], state: 'correct' };
-        correctCharsRef.current += 1;
-      }
+        totalKeystrokesRef.current += 1;
+        inputRef.current += e.key;
+        charIndexRef.current = ci + 1;
 
-      totalKeystrokesRef.current += 1;
-      keystrokeLogRef.current.push({ key: ' ', timestamp: now, delay, correct: true });
+        keystrokeLogRef.current.push({ key: e.key, timestamp: now, delay, correct: isCorrect });
 
-      charStatesRef.current = [...chars];
-      wordIndexRef.current += 1;
-      inputRef.current = '';
-      charIndexRef.current = getWordStartIndex(wordIndexRef.current);
-
-      // Check if all words completed (words mode)
-      if (mode === 'words' && wordIndexRef.current >= modeValue) {
-        finish();
-      }
-      // Also finish if we've run out of words in time mode
-      if (wordIndexRef.current >= wordsArray.current.length) {
-        finish();
-      }
-      return;
-    }
-
-    // -------------------------------------------------------------------------
-    // Regular character
-    // -------------------------------------------------------------------------
-    const posInWord = inputRef.current.length;
-
-    if (posInWord < currentWord.length) {
-      // Typing within the expected word
-      const expectedChar = currentWord[posInWord];
-      const isCorrect = e.key === expectedChar;
-
-      const wordStart = getWordStartIndex(wordIndexRef.current);
-      const ci = wordStart + posInWord;
-
-      if (ci < chars.length) {
-        chars[ci] = { ...chars[ci], state: isCorrect ? 'correct' : 'incorrect' };
-        charStatesRef.current = [...chars];
-      }
-
-      if (isCorrect) {
-        correctCharsRef.current += 1;
+        // In words mode, if this was the last char of the last word, auto-finish
+        if (mode === 'words' && wordIndexRef.current === modeValue - 1 && inputRef.current.length === currentWord.length) {
+          finish();
+          return;
+        }
+        // Also auto-finish if we completed the very last word in the text
+        if (wordIndexRef.current === wordsArray.current.length - 1 && inputRef.current.length === currentWord.length) {
+          finish();
+          return;
+        }
       } else {
+        // Extra character beyond the word length
+        if (!extraCharsRef.current[wordIndexRef.current]) {
+          extraCharsRef.current[wordIndexRef.current] = [];
+        }
+        extraCharsRef.current[wordIndexRef.current].push(e.key);
+        inputRef.current += e.key;
+
         incorrectCharsRef.current += 1;
+        totalKeystrokesRef.current += 1;
+
+        // Insert an extra char state entry after the current word's chars
+        const wordStart = getWordStartIndex(wordIndexRef.current);
+        const insertAt = wordStart + currentWord.length + extraCharsRef.current[wordIndexRef.current].length - 1;
+        const extraState = { char: e.key, state: 'extra' };
+        charStatesRef.current = [
+          ...chars.slice(0, insertAt),
+          extraState,
+          ...chars.slice(insertAt),
+        ];
+
+        keystrokeLogRef.current.push({ key: e.key, timestamp: now, delay, correct: false });
       }
-
-      totalKeystrokesRef.current += 1;
-      inputRef.current += e.key;
-      charIndexRef.current = ci + 1;
-
-      keystrokeLogRef.current.push({ key: e.key, timestamp: now, delay, correct: isCorrect });
-
-      // In words mode, if this was the last char of the last word, auto-finish
-      if (mode === 'words' && wordIndexRef.current === modeValue - 1 && inputRef.current.length === currentWord.length) {
-        finish();
-        return;
+    } finally {
+      // Force an immediate React render update if the user modified the text
+      if (totalKeystrokesRef.current !== prevTotal || charIndexRef.current !== prevIndex || e.key === 'Backspace') {
+        setDisplayState(buildDisplayState());
       }
-      // Also auto-finish if we completed the very last word in the text
-      if (wordIndexRef.current === wordsArray.current.length - 1 && inputRef.current.length === currentWord.length) {
-        finish();
-        return;
-      }
-    } else {
-      // Extra character beyond the word length
-      if (!extraCharsRef.current[wordIndexRef.current]) {
-        extraCharsRef.current[wordIndexRef.current] = [];
-      }
-      extraCharsRef.current[wordIndexRef.current].push(e.key);
-      inputRef.current += e.key;
-
-      incorrectCharsRef.current += 1;
-      totalKeystrokesRef.current += 1;
-
-      // Insert an extra char state entry after the current word's chars
-      const wordStart = getWordStartIndex(wordIndexRef.current);
-      const insertAt = wordStart + currentWord.length + extraCharsRef.current[wordIndexRef.current].length - 1;
-      const extraState = { char: e.key, state: 'extra' };
-      charStatesRef.current = [
-        ...chars.slice(0, insertAt),
-        extraState,
-        ...chars.slice(insertAt),
-      ];
-
-      keystrokeLogRef.current.push({ key: e.key, timestamp: now, delay, correct: false });
     }
   }, [startEngine, finish, mode, modeValue]);
 
