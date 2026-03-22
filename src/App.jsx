@@ -11,6 +11,7 @@ import Lessons from './pages/Lessons';
 import Friends from './pages/Friends';
 import Auth from './pages/Auth';
 import AuthCallback from './pages/AuthCallback';
+import ResetPassword from './pages/ResetPassword';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import useUserStore from './stores/userStore';
 import CatLoadingScreen from './components/ui/CatLoadingScreen';
@@ -62,6 +63,7 @@ export default function App() {
                   <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
                 </Route>
               </Routes>
             </BrowserRouter>

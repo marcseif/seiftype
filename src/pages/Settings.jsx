@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import usePreferencesStore from '../stores/preferencesStore';
 import useUserStore from '../stores/userStore';
-import { updatePreferences, uploadAvatarFile, linkOAuthIdentity, unlinkOAuthIdentity } from '../lib/supabase';
+import { updatePreferences, uploadAvatarFile, linkOAuthIdentity, unlinkOAuthIdentity, updateUserPassword } from '../lib/supabase';
 import { FcGoogle } from 'react-icons/fc';
 import { FaDiscord } from 'react-icons/fa';
 import { THEMES, FONTS, CARET_STYLES, SOUND_PACKS, applyTheme } from '../data/themes';
@@ -11,12 +12,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function Settings() {
   const prefs = usePreferencesStore();
   const { user, profile, updateUserProfile } = useUserStore();
+  const location = useLocation();
 
   const [username, setUsername] = useState(profile?.username || '');
   const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
   const [avatarFile, setAvatarFile] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-    const fileInputRef = useRef(null);
+  
+  const [newPassword, setNewPassword] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  
+  const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    // Left deliberately blank, reset password handled via /reset-password route now
+  }, [location]);
 
   // Auto-save preferences map when individual settings change
   useEffect(() => {
@@ -57,7 +67,22 @@ export default function Settings() {
     setAvatarUrl(profile?.avatar_url || '');
   }
 
-  
+  const handleUpdatePassword = async () => {
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    setIsUpdatingPassword(true);
+    const { error } = await updateUserPassword(newPassword);
+    if (error) {
+      toast.error(error.message || 'Failed to update password');
+    } else {
+      toast.success('Password updated successfully!');
+      setNewPassword('');
+    }
+    setIsUpdatingPassword(false);
+  };
+
   const handleProfileUpdate = async () => {
     let finalAvatarUrl = avatarUrl;
     
@@ -530,6 +555,38 @@ export default function Settings() {
           ))}
         </div>
       </Section>
+
+      {/* Security */}
+      {user && user.app_metadata?.provider === 'email' && (
+        <Section title="Security">
+          <div className="flex flex-col gap-4">
+            <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+              Change your password.
+            </p>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium" style={{ color: 'var(--color-text-secondary)' }}>New Password</label>
+              <div className="flex gap-3">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="flex-1 px-3 py-2 rounded-lg border text-sm outline-none"
+                  style={{ background: 'var(--color-bg)', borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+                />
+                <button
+                  onClick={handleUpdatePassword}
+                  disabled={isUpdatingPassword || newPassword.length < 8}
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
+                  style={{ background: 'var(--color-error)', color: '#fff' }}
+                >
+                  {isUpdatingPassword ? 'Updating...' : 'Update'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </Section>
+      )}
       </div>
   );
 }

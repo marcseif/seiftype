@@ -6,6 +6,7 @@ import { signOut, getPendingFriendRequests, supabase } from '../../lib/supabase'
 import { getRankTier } from '../../lib/elo';
 import { calculateLevel, xpForLevel } from '../../lib/metrics';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 const NAV_LINKS = [
   { to: '/', label: 'Home' },
@@ -50,6 +51,14 @@ export default function Navbar() {
   const handleSignOut = async () => {
     await signOut();
     setDropdownOpen(false);
+    toast('Signed out successfully', { 
+      icon: '👋',
+      style: {
+        background: 'var(--color-surface)',
+        color: 'var(--color-text)',
+        border: '1px solid var(--color-border)',
+      }
+    });
   };
 
   const getLevelInfo = (xp) => {

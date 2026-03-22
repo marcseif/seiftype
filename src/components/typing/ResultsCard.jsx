@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { FiRotateCcw, FiArrowRight, FiShare2 } from 'react-icons/fi';
+import { FiRotateCcw, FiArrowRight, FiShare2, FiUserPlus } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Link } from 'react-router-dom';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -177,6 +178,7 @@ const statVariants = {
  * onRestart, onNext
  */
 import usePreferencesStore from '../../stores/preferencesStore';
+import useUserStore from '../../stores/userStore';
 
 export default function ResultsCard({
   wpm = 0,
@@ -193,6 +195,7 @@ export default function ResultsCard({
   onRestart,
   onNext,
 }) {
+  const { user } = useUserStore();
   const prefs = usePreferencesStore();
   const buckets = useMemo(() => buildWpmBuckets(keystrokeLog), [keystrokeLog]);
   const consistency = useMemo(() => computeConsistency(buckets), [buckets]);
@@ -461,6 +464,50 @@ export default function ResultsCard({
           Share
         </button>
       </motion.div>
+
+      {/* ----- Sign Up CTA ----- */}
+      {!user && (
+        <motion.div
+          className="mt-6 p-4 rounded-xl border flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-4"
+          style={{
+            backgroundColor: 'var(--color-bg-tertiary, var(--color-bg-secondary))',
+            borderColor: 'var(--color-primary-dim, var(--color-border))',
+          }}
+          variants={statVariants}
+          custom={10}
+          initial="hidden"
+          animate="visible"
+        >
+          <div>
+            <h4
+              className="text-sm font-semibold mb-1"
+              style={{ color: 'var(--color-text)' }}
+            >
+              Want to save this score?
+            </h4>
+            <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+              Create an account to track your progress, compete on leaderboards, and unlock achievements.
+            </p>
+          </div>
+          <Link
+            to="/auth"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-colors shrink-0"
+            style={{
+              backgroundColor: 'var(--color-primary)',
+              color: '#fff',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+            }}
+          >
+            <FiUserPlus size={16} />
+            Sign Up Now
+          </Link>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

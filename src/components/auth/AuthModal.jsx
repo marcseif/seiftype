@@ -117,8 +117,10 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
     setLoading(true);
     try {
       const { error } = await resetPasswordForEmail(email);
+      // Because Supabase handles "Doesn't Exist" with the same fake success (when email enumeration is on),
+      // we check if error was actually thrown (which requires Email Enumeration Protection to be OFF in dashboard).
       if (error) throw error;
-      setSuccess('Password reset link sent to your email. You can close this window.');
+      setSuccess('If an account exists, a reset link has been sent to your email.');
     } catch (err) {
       setError(err.message || 'Failed to send reset link');
     } finally {
@@ -149,10 +151,10 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
           onKeyDown={handleKeyDown}
         >
           <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
+            initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
             className="w-full max-w-md rounded-xl border p-6 shadow-2xl"
             style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
           >

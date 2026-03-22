@@ -67,8 +67,16 @@ export async function signInWithDiscord() {
 }
 
 export async function resetPasswordForEmail(email) {
+  // If email enumeration protection is off, this WILL throw an error if the email doesn't exist
   const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/settings?reset=true`,
+    redirectTo: `${window.location.origin}/reset-password`,
+  });
+  return { data, error };
+}
+
+export async function updateUserPassword(newPassword) {
+  const { data, error } = await supabase.auth.updateUser({
+    password: newPassword
   });
   return { data, error };
 }
