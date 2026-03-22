@@ -72,9 +72,9 @@ function Pill({ active, onClick, children }) {
 // ---------------------------------------------------------------------------
 
 const panelVariants = {
-  hidden: { height: 0, opacity: 0 },
-  visible: { height: 'auto', opacity: 1, transition: { duration: 0.2, ease: 'easeOut' } },
-  exit: { height: 0, opacity: 0, transition: { duration: 0.15, ease: 'easeIn' } },
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2, ease: 'easeOut' } },
+  exit: { opacity: 0, transition: { duration: 0.15, ease: 'easeIn' } },
 };
 
 function SubOptions({ contentMode }) {
@@ -212,10 +212,10 @@ export default function TestConfig() {
       }}
     >
       {/* Row 1: test mode (time / words) with value selectors */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex items-center gap-3 flex-wrap min-h-[40px]">
         {/* Mode toggle */}
         <div
-          className="flex items-center rounded-lg overflow-hidden"
+          className="flex items-center rounded-lg overflow-hidden shrink-0"
           style={{ border: '1px solid var(--color-border)' }}
         >
           <button
@@ -249,12 +249,12 @@ export default function TestConfig() {
 
         {/* Separator */}
         <div
-          className="w-px h-5 hidden sm:block"
+          className="w-px h-5 hidden lg:block"
           style={{ backgroundColor: 'var(--color-border)' }}
         />
 
         {/* Value pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap min-h-[32px]">
           {(testMode === 'time' ? timeValues : wordValues).map((val) => (
             <Pill
               key={val}
@@ -268,12 +268,12 @@ export default function TestConfig() {
 
         {/* Separator */}
         <div
-          className="w-px h-5 hidden sm:block"
+          className="w-px h-5 hidden lg:block"
           style={{ backgroundColor: 'var(--color-border)' }}
         />
 
         {/* Content mode pills */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="flex items-center gap-1.5 flex-wrap min-h-[32px]">
           {CONTENT_MODES.map((cm) => (
             <Pill
               key={cm.value}
@@ -286,19 +286,12 @@ export default function TestConfig() {
         </div>
       </div>
 
-      {/* Row 2: Sub-options for the active content mode */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={contentMode}
-          variants={panelVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          className="overflow-hidden"
-        >
+      {/* Row 2: Sub-options for the active content mode (absolute positioning helper to prevent jumping) */}
+      <div className="relative min-h-[36px] w-full">
+        <div className="absolute inset-0 flex items-center w-full">
           <SubOptions contentMode={contentMode} />
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      </div>
     </div>
   );
 }

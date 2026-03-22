@@ -49,16 +49,15 @@ export default function Navbar() {
   }, [user]);
 
   const handleSignOut = async () => {
-    await signOut();
-    setDropdownOpen(false);
-    toast('Signed out successfully', { 
-      icon: '👋',
-      style: {
-        background: 'var(--color-surface)',
-        color: 'var(--color-text)',
-        border: '1px solid var(--color-border)',
-      }
-    });
+    try {
+      await signOut();
+      localStorage.clear(); // Ensure all local caching gets dumped explicitly
+    } catch (err) {
+      console.error('Signout error:', err);
+    }
+    // Hard navigate to root, forces a full page reload, displaying the loading screen
+    // and guarantees a completely fresh state.
+    window.location.href = '/';
   };
 
   const getLevelInfo = (xp) => {

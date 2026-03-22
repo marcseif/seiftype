@@ -126,7 +126,7 @@ export default function Daily() {
       let attempts = 0;
       const interval = setInterval(() => {
         if (containerRef.current) {
-          containerRef.current.focus();
+          containerRef.current.focus({ preventScroll: true });
           clearInterval(interval);
         }
         attempts++;

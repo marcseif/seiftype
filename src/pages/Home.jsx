@@ -310,7 +310,7 @@ export default function Home() {
 
     // Restore focus to the typing container
     setTimeout(() => {
-      containerRef.current?.focus();
+      containerRef.current?.focus({ preventScroll: true });
     }, 80);
   }, [engineRestart]);
 
@@ -318,7 +318,7 @@ export default function Home() {
     setCompletedResult(null);
     setRegenCounter((c) => c + 1);
     setTimeout(() => {
-      containerRef.current?.focus();
+      containerRef.current?.focus({ preventScroll: true });
     }, 80);
   }, []);
 
@@ -431,7 +431,7 @@ export default function Home() {
       let attempts = 0;
       const interval = setInterval(() => {
         if (containerRef.current) {
-          containerRef.current.focus();
+          containerRef.current.focus({ preventScroll: true });
           clearInterval(interval);
         }
         attempts++;

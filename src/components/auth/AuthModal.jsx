@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FiX, FiMail, FiLock, FiUser } from 'react-icons/fi';
 import { FcGoogle } from 'react-icons/fc';
 import { FaDiscord } from 'react-icons/fa';
 import { signUpWithEmail, signInWithEmail, signInWithGoogle, signInWithDiscord, resetPasswordForEmail } from '../../lib/supabase';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
   const [mode, setMode] = useState(defaultMode);
@@ -128,6 +127,11 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
     }
   };
 
+  // Sync mode when URL parameters change but the component hasn't unmounted
+  useEffect(() => {
+    setMode(defaultMode);
+  }, [defaultMode]);
+
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
@@ -136,31 +140,15 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
     if (e.key === 'Escape') onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)' }}
-          onClick={handleBackdropClick}
-          onKeyDown={handleKeyDown}
+        <div
+          className="w-full max-w-md rounded-xl border p-6 shadow-2xl relative"
+          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', margin: '0 auto' }}
         >
-          <motion.div
-            layout
-            initial={{ scale: 0.95, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.95, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="w-full max-w-md rounded-xl border p-6 shadow-2xl relative overflow-hidden"
-            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>
                 {mode === 'reset' ? 'Reset Password' : mode === 'signin' ? 'Welcome Back' : 'Create Account'}
               </h2>
@@ -321,9 +309,8 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
                 </div>
               </>
             )}
-          </motion.div>
-        </motion.div>
+          </div>
       )}
-    </AnimatePresence>
+    </>
   );
 }

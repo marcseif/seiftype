@@ -189,7 +189,7 @@ function LessonRunner({ lesson, onExit }) {
           setFinished(false);
           setResultData(null);
           engineReset();
-          setTimeout(() => containerRef.current?.focus(), 10);
+          setTimeout(() => containerRef.current?.focus({ preventScroll: true }), 10);
         }
       }
       if (e.key === 'Escape' || (e.key === 'Escape' && mode === 'esc')) {
@@ -197,7 +197,7 @@ function LessonRunner({ lesson, onExit }) {
         setFinished(false);
         setResultData(null);
         engineReset();
-        setTimeout(() => containerRef.current?.focus(), 10);
+        setTimeout(() => containerRef.current?.focus({ preventScroll: true }), 10);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -206,7 +206,7 @@ function LessonRunner({ lesson, onExit }) {
 
   useEffect(() => {
     if (containerRef.current) {
-      containerRef.current.focus();
+      containerRef.current.focus({ preventScroll: true });
     }
   }, []);
 
@@ -317,7 +317,7 @@ function LessonRunner({ lesson, onExit }) {
                 setFinished(false);
                 setResultData(null);
                 engine.reset();
-                setTimeout(() => containerRef.current?.focus(), 10);
+                setTimeout(() => containerRef.current?.focus({ preventScroll: true }), 10);
               }}
               onNext={onExit}
             />

@@ -206,7 +206,7 @@ export default function Race() {
         clearInterval(countdownInterval);
         race.setStatus('racing');
         updateRace(raceData.id, { status: 'racing', started_at: new Date().toISOString() });
-        containerRef.current?.focus();
+        containerRef.current?.focus({ preventScroll: true });
       }
     }, 1000);
   }
@@ -269,7 +269,7 @@ export default function Race() {
             else {
               clearInterval(ci);
               race.setStatus('racing');
-              containerRef.current?.focus();
+              containerRef.current?.focus({ preventScroll: true });
             }
           }, 1000);
         }
@@ -316,7 +316,7 @@ export default function Race() {
       else {
         clearInterval(ci);
         race.setStatus('racing');
-        containerRef.current?.focus();
+        containerRef.current?.focus({ preventScroll: true });
       }
     }, 1000);
   }
