@@ -56,12 +56,33 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
 
     try {
       if (mode === 'signup') {
-        const { error } = await signUpWithEmail(email, password, username);
-        if (error) throw error;
+        const { data, error } = await signUpWithEmail(email, password, username);
+        
+        if (error) {
+          if (error.status === 429) {
+            throw new Error('Too many sign up attempts. Please try again later.');
+          }
+          if (error.message?.toLowerCase().includes('already registered') || error.message?.toLowerCase().includes('already exists')) {
+            throw new Error('An account with this email already exists.');
+          }
+          throw error;
+        }
+
+        // Supabase returns a fake success object if email enumeration protection is on,
+        // but identities will be empty (or missing) if the user actually already exists.
+        if (data?.user && (!data.user.identities || data.user.identities.length === 0)) {
+          throw new Error('An account with this email already exists.');
+        }
+
         setSuccess('Account created! Please check your email to verify your account.');
       } else {
         const { error } = await signInWithEmail(email, password);
-        if (error) throw error;
+        if (error) {
+          if (error.status === 429) {
+            throw new Error('Too many login attempts. Please try again later.');
+          }
+          throw error;
+        }
         onClose();
       }
     } catch (err) {
