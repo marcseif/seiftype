@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { FiMenu, FiX, FiUser, FiUsers, FiSettings, FiLogOut } from 'react-icons/fi';
 import useUserStore from '../../stores/userStore';
 import { signOut, getPendingFriendRequests, supabase } from '../../lib/supabase';
@@ -17,6 +17,7 @@ const NAV_LINKS = [
 ];
 
 export default function Navbar() {
+  const navigate = useNavigate();
   const { user, profile } = useUserStore();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -25,39 +26,43 @@ export default function Navbar() {
 
   useEffect(() => {
     if (!user) return;
-    
-    const fetchRequests = () => {
-      getPendingFriendRequests(user.id).then(({ data }) => {
-        if (data) setPendingCount(data.length);
-      });
-    };
+      const fetchRequests = () => {
+        getPendingFriendRequests(user.id).then(({ data }) => {
+          setPendingCount(data ? data.length : 0);
+        });
+      };
 
-    fetchRequests();
+      fetchRequests();
 
-    const channel = supabase
-      .channel('friendships_changes_nav')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'friendships', filter: `friend_id=eq.${user.id}` },
-        fetchRequests
-      )
-      .subscribe();
+      window.addEventListener('friends-updated', fetchRequests);
 
-    return () => {
+      const channel = supabase
+        .channel('friendships_changes_nav')
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'friendships', filter: `friend_id=eq.${user.id}` },
+          fetchRequests
+        )
+        .subscribe();
+
+      return () => {
+        window.removeEventListener('friends-updated', fetchRequests);
       supabase.removeChannel(channel);
     };
   }, [user]);
 
   const handleSignOut = async () => {
+    // Navigate home first so protected routes don't kick us to /auth
+    navigate('/');
+    
     try {
       await signOut();
-      localStorage.clear(); // Ensure all local caching gets dumped explicitly
+      localStorage.clear();
+      // Only do a hard reload after we know sign out completed and we're safely on the home page
+      window.location.href = '/';
     } catch (err) {
       console.error('Signout error:', err);
     }
-    // Hard navigate to root, forces a full page reload, displaying the loading screen
-    // and guarantees a completely fresh state.
-    window.location.href = '/';
   };
 
   const getLevelInfo = (xp) => {
@@ -207,14 +212,14 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 to="/auth"
-                className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
-                style={{ color: 'var(--color-text-secondary)' }}
+                className="px-3 py-1.5 rounded-md text-sm font-medium transition-colors hover:opacity-80"
+                style={{ color: 'var(--color-text)' }}
               >
                 Sign In
               </Link>
               <Link
                 to="/auth?mode=signup"
-                className="px-3 py-1.5 rounded-md text-sm font-medium"
+                className="px-3 py-1.5 rounded-md text-sm font-medium transition-opacity hover:opacity-80"
                 style={{ background: 'var(--color-primary)', color: '#fff' }}
               >
                 Sign Up

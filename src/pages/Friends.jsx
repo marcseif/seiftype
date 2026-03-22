@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { FiUserPlus, FiCheck, FiX, FiTrash2, FiSearch } from 'react-icons/fi';
 import useUserStore from '../stores/userStore';
 import {
@@ -65,18 +66,21 @@ export default function Friends() {
   const handleAccept = async (id) => {
     await acceptFriendRequest(id);
     loadData();
+    window.dispatchEvent(new Event('friends-updated'));
   };
 
   const handleRemove = async (id) => {
     if(window.confirm('Are you sure you want to remove this friend?')) {
       await removeFriend(id);
       loadData();
+      window.dispatchEvent(new Event('friends-updated'));
     }
   };
 
   const handleReject = async (id) => {
     await removeFriend(id);
     loadData();
+    window.dispatchEvent(new Event('friends-updated'));
   };
 
   if (!user) return <div className="p-8 text-center text-secondary">Please sign in to view friends.</div>;
@@ -157,12 +161,14 @@ export default function Friends() {
                       style={{ borderColor: 'var(--color-border)' }}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">
-                          {friendInfo?.username?.[0]?.toUpperCase() || '?'}
-                        </div>
-                        <span className="font-medium text-lg">{friendInfo?.username}</span>
+                          <Link to={`/u/${friendInfo?.username}`} className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary hover:opacity-80">
+                            {friendInfo?.username?.[0]?.toUpperCase() || '?'}
+                          </Link>
+                          <Link to={`/u/${friendInfo?.username}`} className="font-medium text-lg hover:underline transition-colors hover:text-primary">
+                            {friendInfo?.username}
+                          </Link>
                       </div>
-                      
+
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => handleRemove(f.friendship_id)} 

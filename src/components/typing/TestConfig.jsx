@@ -13,7 +13,6 @@ const CONTENT_MODES = [
   { value: 'random', label: 'Words' },
   { value: 'quotes', label: 'Quotes' },
   { value: 'code', label: 'Code' },
-  { value: 'custom', label: 'Custom' },
 ];
 
 const DIFFICULTY_OPTIONS = [
@@ -84,8 +83,8 @@ function SubOptions({ contentMode }) {
     codeLanguage, setCodeLanguage,
   } = usePreferencesStore();
 
-  // Local state for custom text
-  const [customText, setCustomText] = useState('');
+  
+  
 
   switch (contentMode) {
     case 'random':
@@ -151,34 +150,7 @@ function SubOptions({ contentMode }) {
         </div>
       );
 
-    case 'custom':
-      return (
-        <div className="flex flex-col gap-2 w-full">
-          <span
-            className="text-xs font-medium"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            Paste your text
-          </span>
-          <textarea
-            value={customText}
-            onChange={(e) => setCustomText(e.target.value)}
-            placeholder="Paste or type the text you want to practice..."
-            rows={3}
-            className="px-3 py-2 rounded-lg text-xs font-medium outline-none transition-colors resize-y focus:ring-1"
-            style={{
-              backgroundColor: 'var(--color-bg)',
-              color: 'var(--color-text)',
-              border: '1px solid var(--color-border)',
-              ringColor: 'var(--color-primary)',
-              width: '100%',
-              minHeight: 60,
-            }}
-          />
-        </div>
-      );
-
-    default:
+default:
       return null;
   }
 }

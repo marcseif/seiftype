@@ -10,7 +10,7 @@ const IDLE_THRESHOLD = 500; // ms before blink starts
  * Blinks after the typist is idle for 500ms and transitions smoothly
  * when `smooth` is enabled.
  */
-export default function Caret({ position, style = 'line', smooth = true, charWidth = 10 }) {
+export default function Caret({ position, style = 'line', charWidth = 10 }) {
   const [idle, setIdle] = useState(false);
   const [prevPosition, setPrevPosition] = useState(position);
 
@@ -26,7 +26,7 @@ export default function Caret({ position, style = 'line', smooth = true, charWid
   }, [position.left, position.top]);
 
   const height = position.height || '1.2em';
-  const transition = smooth ? 'transform 100ms cubic-bezier(0.2, 0, 0, 1)' : 'none';
+  const transition = 'transform 100ms cubic-bezier(0.2, 0, 0, 1)';
 
   let targetX = position.left ?? 0;
   let targetY = position.top ?? 0;

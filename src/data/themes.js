@@ -25,7 +25,7 @@ export const THEMES = {
       correct: '#00ff41',
       incorrect: '#ff0040',
       typed: '#ffffff',
-      untyped: '#4d4d66',
+      untyped: '#c2c2d6',
     },
   },
   dark: {

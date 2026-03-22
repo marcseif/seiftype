@@ -470,17 +470,6 @@ export default function Settings() {
             </button>
           ))}
         </div>
-        <div className="mt-3 flex items-center gap-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={prefs.smoothCaret}
-              onChange={(e) => prefs.setSmoothCaret(e.target.checked)}
-              className="rounded"
-            />
-            <span className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>Smooth caret animation</span>
-          </label>
-        </div>
       </Section>
 
       {/* Sound */}

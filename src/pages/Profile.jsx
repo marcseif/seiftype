@@ -44,6 +44,7 @@ import { SkeletonProfile } from '../components/ui/LoadingSkeleton';
 const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'charts', label: 'Charts' },
+  { key: 'history', label: 'History' },
   { key: 'achievements', label: 'Achievements' },
   { key: 'keyboard', label: 'Keyboard' },
 ];
@@ -580,6 +581,71 @@ export default function Profile() {
                 >
                   No keystroke data available for this user yet.
                 </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* ---- History ---- */}
+        {activeTab === 'history' && (
+          <motion.div
+            key="history"
+            variants={tabContentVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+          >
+            <div
+              className="rounded-xl border p-6"
+              style={{
+                background: 'var(--color-surface)',
+                borderColor: 'var(--color-border)',
+              }}
+            >
+              <h3
+                className="text-lg font-semibold mb-5"
+                style={{ color: 'var(--color-text)' }}
+              >
+                Recent Test History
+              </h3>
+              {results.length === 0 ? (
+                <p
+                  className="text-sm text-center mt-4"
+                  style={{ color: 'var(--color-text-muted)' }}
+                >
+                  No test history found for this user.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr style={{ color: 'var(--color-text-secondary)', borderBottom: '1px solid var(--color-border)' }}>
+                        <th className="py-2 px-4 font-medium">Date</th>
+                        <th className="py-2 px-4 font-medium">WPM</th>
+                        <th className="py-2 px-4 font-medium">Accuracy</th>
+                        <th className="py-2 px-4 font-medium">Mode</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.map((r, idx) => (
+                        <tr
+                          key={r.id || idx}
+                          style={{
+                            borderBottom: '1px solid var(--color-border)',
+                            color: 'var(--color-text)'
+                          }}
+                        >
+                          <td className="py-3 px-4">{new Date(r.created_at).toLocaleString()}</td>
+                          <td className="py-3 px-4 font-bold text-primary">{Math.round(r.wpm)}</td>
+                          <td className="py-3 px-4">{Math.round(r.accuracy)}%</td>
+                          <td className="py-3 px-4 capitalize">
+                            {r.mode} {r.mode_value} • {r.content_mode}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           </motion.div>
