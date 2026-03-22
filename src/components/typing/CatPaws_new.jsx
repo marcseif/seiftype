@@ -69,6 +69,19 @@ function Paw({ side, activeFingerId }) {
   return (
     <div className="relative" style={{ width: '130px' }}>
       <img src={imgSrc} alt={`Cat Paw ${side}`} className="w-full h-auto drop-shadow-md pointer-events-none opacity-90" />
+      <div 
+        className="absolute inset-0 pointer-events-none z-[5] opacity-50"
+        style={{
+          backgroundColor: 'var(--color-primary)',
+          mixBlendMode: 'color',
+          WebkitMaskImage: `url(${imgSrc})`,
+          maskImage: `url(${imgSrc})`,
+          WebkitMaskSize: 'contain',
+          maskSize: 'contain',
+          WebkitMaskRepeat: 'no-repeat',
+          maskRepeat: 'no-repeat',
+        }}
+      />
       
       <GlowingOverlay imgSrc={images.pinky} isActive={activeFingerId === `pinky-${s}`} color={getColor(`pinky-${s}`)} />
       <GlowingOverlay imgSrc={images.ring} isActive={activeFingerId === `ring-${s}`} color={getColor(`ring-${s}`)} />
