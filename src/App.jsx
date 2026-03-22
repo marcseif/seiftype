@@ -16,6 +16,7 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import useUserStore from './stores/userStore';
 import CatLoadingScreen from './components/ui/CatLoadingScreen';
 import { AnimatePresence, motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 
 export default function App() {
   const initialize = useUserStore((s) => s.initialize);
@@ -23,6 +24,22 @@ export default function App() {
   const [minLoadingTimePassed, setMinLoadingTimePassed] = useState(false);
 
   useEffect(() => {
+    // Check for hash errors from Supabase (e.g. expired OTP token)
+    if (window.location.hash && window.location.hash.includes('error=')) {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const errorDescription = hashParams.get('error_description');
+      
+      if (errorDescription) {
+        // Wait a slight moment so toast container is mounted
+        setTimeout(() => {
+          toast.error(errorDescription.replace(/\+/g, ' '), { duration: 5000 });
+        }, 500);
+      }
+      
+      // Clean up the URL
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+
     // Start initialization fetch
     initialize();
 

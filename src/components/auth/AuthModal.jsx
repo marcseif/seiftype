@@ -151,11 +151,12 @@ export default function AuthModal({ isOpen, onClose, defaultMode = 'signin' }) {
           onKeyDown={handleKeyDown}
         >
           <motion.div
+            layout
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="w-full max-w-md rounded-xl border p-6 shadow-2xl"
+            className="w-full max-w-md rounded-xl border p-6 shadow-2xl relative overflow-hidden"
             style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}
           >
             {/* Header */}
